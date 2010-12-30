@@ -2,7 +2,7 @@
 
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.tejas.platform</groupId>
-    <artifactId>tejas</artifactId>
+    <artifactId>tejas-core</artifactId>
     <packaging>jar</packaging>
     <version>SNAPSHOT</version>
     <name>Tejas Platform</name>
@@ -27,11 +27,17 @@
             <version>1.2.14</version>
         </dependency>
 
-	<dependency>
-		<groupId>commons-lang</groupId>
-		<artifactId>commons-lang</artifactId>
-		<version>2.1</version>
-	</dependency>
+		<dependency>
+			<groupId>commons-lang</groupId>
+			<artifactId>commons-lang</artifactId>
+			<version>2.1</version>
+		</dependency>
+
+		<dependency>
+			<groupId>commons-beanutils</groupId>
+			<artifactId>commons-beanutils</artifactId>
+			<version>1.8.3</version>
+		</dependency>
 
         <dependency>
             <groupId>xstream</groupId>

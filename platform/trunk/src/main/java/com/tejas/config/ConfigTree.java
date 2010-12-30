@@ -421,14 +421,14 @@ class ConfigTree
 		for (int i = 0; i < globalFiles.length; ++i)
 		{
 			String filepath = globalFiles[i].getAbsolutePath();
-			loadEntriesFromFile(filepath, true);
+			loadEntriesFromFile(filepath, isProduction());
 		}
 
 		String appgroupFile = configRoot + File.separator + APPGROUP + File.separator + appGroup + CONFIG_SUFFIX;
 		loadEntriesFromFile(appgroupFile, true);
 
 		String appFile = configRoot + File.separator + APP + File.separator + appName + CONFIG_SUFFIX;
-		loadEntriesFromFile(appFile, true);
+		loadEntriesFromFile(appFile, isProduction());
 
 		for (int i = 0; i < overrides_.size(); ++i)
 		{

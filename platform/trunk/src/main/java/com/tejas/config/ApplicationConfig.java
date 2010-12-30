@@ -275,4 +275,10 @@ public class ApplicationConfig
 	{
 		myTree.loadEntriesFromFile(path, true);
 	}
+
+    public static String getWebappName()
+    {
+        //FIXME: Distinguish web-app from application
+        return getApplicationName();
+    }
 }

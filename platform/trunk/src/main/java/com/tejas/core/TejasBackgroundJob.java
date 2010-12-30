@@ -8,7 +8,7 @@ import java.util.concurrent.TimeUnit;
 import com.tejas.config.ApplicationConfig;
 import com.tejas.core.TejasContext.ExitStatus;
 import com.tejas.core.TejasEventHandler.Severity;
-import com.tejas.dbl.types.TejasAlarms;
+import com.tejas.core.enums.TejasAlarms;
 import com.tejas.utils.misc.StringUtils;
 
 
@@ -22,7 +22,7 @@ import com.tejas.utils.misc.StringUtils;
  * are not being shutdown cleanly. So .....)</li>
  * </ul>
  * <br>
- * In addition to that, this class integrates with Fox, which means that
+ * In addition to that, this class integrates with Tejas, which means that
  * <ul>
  * <li>Alarms are raised on n (configurable) consecutive failures</li>
  * <li>Background job iterations are profiled by default</li>
@@ -36,9 +36,8 @@ import com.tejas.utils.misc.StringUtils;
  * 
  * @author alokgore
  */
-public final class TejasBackgroundJob
+public class TejasBackgroundJob
 {
-
     class Worker extends Thread
     {
         private int _exceptionCount;
@@ -51,6 +50,7 @@ public final class TejasBackgroundJob
         {
             this.configuration = configuration;
             this.task = task;
+            this.setDaemon(true);
         }
 
         private void iterate(TejasContext self)
@@ -136,7 +136,6 @@ public final class TejasBackgroundJob
         public void run()
         {
             this.setName(configuration.jobName);
-            this.setDaemon(true);
             TejasContext self = new TejasContext();
             self.logger.info("Starting background job [", configuration.jobName, "] wtih a napTime of [" + configuration.napIntervalMillis + "] millis");
             while (!isShuttingDown())
@@ -161,8 +160,8 @@ public final class TejasBackgroundJob
         {
             String jobName;
             long napIntervalMillis;
-            int _exceptionThreshold = ApplicationConfig.findInteger("Fox.backgroundjobs.exceptionThreshold", 3);
-            Severity _alarmSeverity = Severity.valueOf(ApplicationConfig.findString("Fox.backgroundjobs.exceptionThreshold", Severity.FATAL.name()));
+            int _exceptionThreshold = ApplicationConfig.findInteger("Tejas.backgroundjobs.exceptionThreshold", 3);
+            Severity _alarmSeverity = Severity.valueOf(ApplicationConfig.findString("Tejas.backgroundjobs.alarmSeverity", Severity.FATAL.name()));
             Enum _alarmName = TejasAlarms.FOX_BACKGROUND_JOB_FAILED;
             Enum componentName;
             String _deduplicationString;
@@ -242,7 +241,7 @@ public final class TejasBackgroundJob
         void runIteration(TejasContext self) throws Exception;
     }
 
-    private static final int WORKER_SHUTDOWN_WAIT = ApplicationConfig.findInteger("Fox.backgroundjobs.workerShutdownWait", 2000);
+    private static final int WORKER_SHUTDOWN_WAIT = ApplicationConfig.findInteger("Tejas.backgroundjobs.workerShutdownWait", 2000);
 
     private boolean shuttingDown = false;
 

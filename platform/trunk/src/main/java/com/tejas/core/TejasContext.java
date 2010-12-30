@@ -67,7 +67,7 @@ public final class TejasContext implements Cloneable
 
     private StopWatch stopWatch;
 
-    public final TejasEventHandler alarm = TejasResourceFactory.getAlarmHandler();
+    private final TejasEventHandler alarm = TejasResourceFactory.getAlarmHandler();
 
     public final TejasLogger logger = TejasResourceFactory.getLogger();
 

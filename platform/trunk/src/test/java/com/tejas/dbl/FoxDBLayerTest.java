@@ -61,9 +61,9 @@ public class FoxDBLayerTest
     @BeforeClass
     public static void setup() throws Exception
     {
-        ApplicationConfig.initialize("", "", "cms", "cms-service");
-        TejasDBLRegistry.registerEndpoint(new MySQLEndpoint.Builder(MYSQL_MASTER).withDatabaseName("dbl_test").build());
-        TejasDBLRegistry.registerEndpoint(new MySQLEndpoint.Builder(MYSQL_SLAVE).withType(READ_ONLY).withDatabaseName("dbl_test").build());
+        ApplicationConfig.initialize("", "", "platform", "platform-test");
+        TejasDBLRegistry.registerEndpoint(new MySQLEndpoint.Builder(MYSQL_MASTER).withDatabaseName("platform").build());
+        TejasDBLRegistry.registerEndpoint(new MySQLEndpoint.Builder(MYSQL_SLAVE).withType(READ_ONLY).withDatabaseName("platform").build());
     }
 
     private List<Foo> fillTable(FooMapper mapper, int numRows)

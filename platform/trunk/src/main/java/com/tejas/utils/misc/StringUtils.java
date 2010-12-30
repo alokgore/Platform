@@ -104,4 +104,14 @@ public class StringUtils
 			throw new RuntimeException(e);
 		}
 	}
+	
+    public static String millisToPrintableString(long millis)
+    {
+        if(millis < 5000) return millis + " millis";
+        long seconds = millis/1000;
+        if(seconds < 120) return seconds + " seconds";
+        long minutes = seconds/60;
+        return minutes + " minutes " + ((minutes < 3) ? (seconds%60) + " seconds"  : "");
+    }
+	
 }

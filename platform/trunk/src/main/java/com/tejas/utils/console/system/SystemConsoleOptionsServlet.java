@@ -9,18 +9,18 @@ public class SystemConsoleOptionsServlet extends ListOptionsServlet
 		super(
 			new ConsoleEntry("Threads"),
 			new ConsoleEntry("Summary", ThreadSummaryServlet.class, true),
-			new ConsoleEntry("Details", ThreadDetailServlet.class, true),
+			new ConsoleEntry("Details", ThreadDetailServlet.class),
 			new ConsoleEntry(),
 			
 			new ConsoleEntry("Stats"),
-			new ConsoleEntry("ps", PsServlet.class, true),
-			new ConsoleEntry("top", TopServlet.class, true),
-			new ConsoleEntry("df", DfServlet.class, true),
-//			new ConsoleEntry("iostat", IoStatServlet.class, true),
+			new ConsoleEntry("ps", PsServlet.class),
+			new ConsoleEntry("top", TopServlet.class),
+			new ConsoleEntry("df", DfServlet.class),
+			new ConsoleEntry("iostat", IoStatServlet.class),
 			new ConsoleEntry(),
 			
 			new ConsoleEntry("Logs"),
-			new ConsoleEntry("log", ListLogsServlet.class, true)
+			new ConsoleEntry("log", ListLogsServlet.class)
 			);
 	}
 }
