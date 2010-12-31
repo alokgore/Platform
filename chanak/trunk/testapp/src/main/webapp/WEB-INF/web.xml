@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+
+<!DOCTYPE web-app
+    PUBLIC "-//Sun Microsystems, Inc.//DTD Web Application 2.3//EN"
+    "http://java.sun.com/dtd/web-app_2_3.dtd">
+
+<web-app>
+
+    <servlet>
+        <servlet-name>DAGTestAppInitServlet</servlet-name>
+        <servlet-class>com.tejas.chanak.testutils.DAGTestAppInitServlet</servlet-class>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+
+    <servlet>
+        <servlet-name>ListDAGServlet</servlet-name>
+		<servlet-class>com.tejas.chanak.console.ListDAGsServlet</servlet-class>
+    </servlet>
+
+    <servlet>
+        <servlet-name>SystemConsole</servlet-name>
+		<servlet-class>com.tejas.utils.console.system.SystemConsoleOptionsServlet</servlet-class>
+    </servlet>
+
+  <servlet-mapping>
+	<servlet-name>ListDAGServlet</servlet-name>
+	<url-pattern>/console/dags</url-pattern>
+  </servlet-mapping>
+		
+  <servlet-mapping>
+	<servlet-name>SystemConsole</servlet-name>
+	<url-pattern>/console/system</url-pattern>
+  </servlet-mapping>
+		
+</web-app>

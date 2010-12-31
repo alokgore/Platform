@@ -1,0 +1,30 @@
+
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>com.tejas.platform.chanak</groupId>
+	<artifactId>dag-test</artifactId>
+	<packaging>war</packaging>
+	<version>SNAPSHOT</version>
+	<name>DAG Manager Test-App</name>
+
+
+    <parent>
+        <groupId>com.tejas.platform</groupId>
+        <artifactId>chanak-tree</artifactId>
+        <version>SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+	<dependencies>
+
+		<dependency>
+			<groupId>com.tejas.platform</groupId>
+			<artifactId>chanak</artifactId>
+			<version>SNAPSHOT</version>
+		</dependency>
+
+	</dependencies>
+
+</project>
