@@ -284,6 +284,7 @@ public class RandomObjectGenerator
             return (T) typeGenerator.generateRandomObject(clazz);
         }
         
+        System.out.println("Trying to generate an object of type " + clazz.getCanonicalName());
         T response = clazz.newInstance();
         
         for (PropertyDescriptor property : PropertyUtils.getPropertyDescriptors(clazz))
@@ -305,7 +306,6 @@ public class RandomObjectGenerator
                 if (writeMethod != null)
                 {
                     Object propertyValue = random(property.getPropertyType(), tolerateHoles);
-                    System.out.println("Passing [" + propertyValue + "] (" + propertyValue.getClass() + ") to [" + writeMethod + "]");
                     writeMethod.invoke(response, propertyValue);
                 }
             }

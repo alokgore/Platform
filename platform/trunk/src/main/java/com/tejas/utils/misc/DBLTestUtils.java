@@ -8,6 +8,11 @@ public class DBLTestUtils
 {
     public static <T> void testMapper(Class<T> mapperClass)
     {
+        testMapper(mapperClass, false);
+    }
+    
+    public static <T> void testMapper(Class<T> mapperClass, boolean nullifyUnknownFields)
+    {
         TejasContext self = new TejasContext();
         T mapper = self.dbl.getMybatisMapper(mapperClass);
         
@@ -32,7 +37,7 @@ public class DBLTestUtils
                     int i = 0;
                     for (Class<?> paramClass : parameterTypes)
                     {
-                        args[i++] = RandomObjectGenerator.getInstance().random(paramClass);
+                        args[i++] = RandomObjectGenerator.getInstance().random(paramClass, nullifyUnknownFields);
                     }
                     method.invoke(mapper, args);
                 }
