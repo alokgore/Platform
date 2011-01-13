@@ -39,6 +39,16 @@ public class Assert
         }
     }
 
+    public static void equals(long expected, long actual)
+    {
+        isTrue(expected == actual, "Assertion Failed! Expected = [" + expected + "] But was [" + actual + "]");
+    }
+
+    public static void equals(int expected, int actual)
+    {
+        isTrue(expected == actual, "Assertion Failed! Expected = [" + expected + "] But was [" + actual + "]");
+    }
+
     public static void equals(double obj1, double obj2)
     {
         equals(obj1, obj2, new MathContext(2, RoundingMode.HALF_UP));
@@ -61,7 +71,7 @@ public class Assert
 
         if (obj1 != null)
         {
-            isTrue(obj1.equals(obj2), "obj1=[" + obj1 + "], obj2=[" + obj2 + "]");
+            isTrue(obj1.equals(obj2), "Expected=[" + obj1 + "], Actual=[" + obj2 + "]");
         }
     }
 

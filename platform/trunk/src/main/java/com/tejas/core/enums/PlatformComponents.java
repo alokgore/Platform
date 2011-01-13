@@ -5,4 +5,6 @@ public enum PlatformComponents
         PMET,
         DBLAYER,
         DAG_MANAGER,
+        PLATFORM_UTIL_LIB,
+
 }

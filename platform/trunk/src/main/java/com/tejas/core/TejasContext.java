@@ -12,7 +12,6 @@ import com.tejas.core.TejasMetricsHandler.StopWatch;
 import com.tejas.dbl.TejasDBLRegistry;
 import com.tejas.utils.misc.Assert;
 
-
 /**
  * The Context defines the domain (boundaries) within which a service operates. The context defines the DBLayer to use, the logger to log to, metrics client and
  * alarm handler. Every service call will take the context as an input and get a reference to the above mentioned resources from the context
@@ -87,29 +86,29 @@ public final class TejasContext implements Cloneable
 
         this.dbl = dbl;
 
-        logger.addContextInformation(grID);
-        logger.addContextInformation(lrID);
+        this.logger.addContextInformation(this.grID);
+        this.logger.addContextInformation(this.lrID);
     }
 
     private synchronized void flushMetricsData()
     {
-        for (LatencyData latencyData : _latencyData)
+        for (LatencyData latencyData : this._latencyData)
         {
             this.metrics.recordLatency(latencyData.apiName, latencyData.latency);
         }
 
-        for (String api : _failureList)
+        for (String api : this._failureList)
         {
             this.metrics.recordCount(api + "." + ExitStatus.Failure);
         }
 
-        _latencyData.clear();
-        _failureList.clear();
+        this._latencyData.clear();
+        this._failureList.clear();
     }
 
     private synchronized String getServiceName()
     {
-        return (_serviceName == null ? "" : _serviceName);
+        return (this._serviceName == null ? "" : this._serviceName);
     }
 
     private synchronized void resetServiceName()
@@ -126,7 +125,7 @@ public final class TejasContext implements Cloneable
     @SuppressWarnings("rawtypes")
     public void alarm(Severity severity, Enum componentName, Enum alarmName, String deduplicationString, String description)
     {
-        alarm.alarm(severity, componentName, alarmName, deduplicationString, description);
+        this.alarm.alarm(severity, componentName, alarmName, deduplicationString, description);
     }
 
     @Override
@@ -147,11 +146,11 @@ public final class TejasContext implements Cloneable
 
         setServiceName(serviceName);
 
-        stopWatch = metrics.startTick(serviceName);
-        metrics.recordAdditionalData("FoxGRID", grID);
-        metrics.recordAdditionalData("FoxLRID", lrID);
+        this.stopWatch = this.metrics.startTick(serviceName);
+        this.metrics.recordAdditionalData("FoxGRID", this.grID);
+        this.metrics.recordAdditionalData("FoxLRID", this.lrID);
 
-        logger.info("Request entered");
+        this.logger.trace("Request entered");
 
         return this;
     }
@@ -167,20 +166,20 @@ public final class TejasContext implements Cloneable
     {
         Assert.notEmpty(getServiceName(), "ServiceName should not have been empty here");
 
-        metrics.recordCount(getServiceName() + "." + status);
+        this.metrics.recordCount(getServiceName() + "." + status);
         flushMetricsData();
 
-        Assert.notNull(stopWatch, "'stopWatch' is null. Someone forgot to call TejasContext.entry()");
-        stopWatch.stop();
+        Assert.notNull(this.stopWatch, "'stopWatch' is null. Someone forgot to call TejasContext.entry()");
+        this.stopWatch.stop();
 
         switch (status)
         {
             case Success:
-                logger.info(getServiceName() + " successful!");
+                this.logger.trace(getServiceName() + " successful!");
                 break;
 
             case Failure:
-                logger.error(getServiceName() + " failed!");
+                this.logger.error(getServiceName() + " failed!");
                 break;
         }
 
@@ -188,26 +187,26 @@ public final class TejasContext implements Cloneable
     }
 
     /**
-     * @deprecated : Will be replaced by an API on {@link TejasMetricsHandler} soon. Interface to be used by the calls that are happening in a thread parallel to
-     *             the main thread (main thread is the one that created the TejasContext and ProfilerScope object). This is required because ProfilerScope works
-     *             on ThreadLocal objects and can not handle metrics generation across different threads. TejasContext just caches the latency-data when this API
-     *             is called. {@link #exit(ExitStatus)} method flushes this data to the main-stream.
+     * @deprecated : Will be replaced by an API on {@link TejasMetricsHandler} soon. Interface to be used by the calls that are happening in a thread parallel
+     *             to the main thread (main thread is the one that created the TejasContext and ProfilerScope object). This is required because ProfilerScope
+     *             works on ThreadLocal objects and can not handle metrics generation across different threads. TejasContext just caches the latency-data when
+     *             this API is called. {@link #exit(ExitStatus)} method flushes this data to the main-stream.
      */
     @Deprecated
     public synchronized void recordFailureAsync(String apiName)
     {
-        _failureList.add(apiName);
+        this._failureList.add(apiName);
     }
 
     /**
-     * @deprecated : Will be replaced by an API on {@link TejasMetricsHandler} soon. Interface to be used by the calls that are happening in a thread parallel to
-     *             the main thread (main thread is the one that created the TejasContext and ProfilerScope object). This is required because ProfilerScope works
-     *             on ThreadLocal objects and can not handle metrics generation across different threads. TejasContext just caches the latency-data when this API
-     *             is called. {@link #exit(ExitStatus)} method flushes this data to the main-stream.
+     * @deprecated : Will be replaced by an API on {@link TejasMetricsHandler} soon. Interface to be used by the calls that are happening in a thread parallel
+     *             to the main thread (main thread is the one that created the TejasContext and ProfilerScope object). This is required because ProfilerScope
+     *             works on ThreadLocal objects and can not handle metrics generation across different threads. TejasContext just caches the latency-data when
+     *             this API is called. {@link #exit(ExitStatus)} method flushes this data to the main-stream.
      */
     @Deprecated
     public synchronized void recordLatencyAsync(String apiName, long latency)
     {
-        _latencyData.add(new LatencyData(apiName, latency));
+        this._latencyData.add(new LatencyData(apiName, latency));
     }
 }
