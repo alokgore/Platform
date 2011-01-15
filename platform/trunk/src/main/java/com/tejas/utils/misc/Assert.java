@@ -180,47 +180,60 @@ public class Assert
     /**
      * Assert that the given string is not <code>null</code> or empty
      * 
-     * @throws IllegalArgumentException
-     *             otherwise
+     * @return The same String that was passed, so calls can be cascaded
      */
-    public static void notEmpty(String string)
+    public static String notEmpty(String string)
     {
-        notEmpty(string, "[Assertion failed] - this argument is required; it must not be null");
+        return notEmpty(string, "[Assertion failed] - this argument is required; it must not be null");
     }
 
     /**
      * Assert that the given string is not <code>null</code> or empty
      * 
-     * @throws IllegalArgumentException
-     *             otherwise
+     * @return The same String that was passed, so calls can be cascaded
      */
-    public static void notEmpty(String string, String message)
+    public static String notEmpty(String string, String message)
     {
         if ((string == null) || string.trim().equals(""))
         {
             throw new IllegalArgumentException(message);
         }
+
+        return string;
     }
 
-    public static void notNull(Object object)
+    /**
+     * @return The same object that was passed, so calls can be cascaded
+     */
+    public static <T> T notNull(T object)
     {
         notNull(object, "[Assertion failed] -  this argument is required; it must not be null");
+        return object;
     }
 
-    public static void notNull(Object object, RuntimeException exception)
+    /**
+     * @return The same object that was passed, so calls can be cascaded
+     */
+    public static <T> T notNull(T object, RuntimeException exception)
     {
         if (object == null)
         {
             throw exception;
         }
+        return object;
     }
 
-    public static void notNull(Object object, String message)
+    /**
+     * @return The same object that was passed, so calls can be cascaded
+     */
+    public static <T> T notNull(T object, String message)
     {
         if (object == null)
         {
             throw new IllegalArgumentException(message);
         }
+
+        return object;
     }
 
 }

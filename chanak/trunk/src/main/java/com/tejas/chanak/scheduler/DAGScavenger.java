@@ -8,20 +8,20 @@ import com.tejas.core.enums.PlatformComponents;
 
 class DAGScavenger extends TejasBackgroundJob
 {
-    static class DAGScavengerTask implements Task
+    static class DAGScavengerTask extends AbstractTejasTask
     {
         @Override
-        public void runIteration(TejasContext self) throws Exception
+        public void runIteration(TejasContext self, TejasBackgroundJob parent) throws Exception
         {
             DAGManager.cleanExpiredDAGs(self);
         }
     }
-    
+
     static final long NAP_TIME = ApplicationConfig.findInteger("dagmanager.scavenger.sleepInterval.seconds", 60 * 60) * 1000;
-    
+
     public DAGScavenger()
     {
         super(new DAGScavengerTask(), new Configuration.Builder("DAGScavenger", PlatformComponents.DAG_MANAGER, NAP_TIME).build());
     }
-    
+
 }

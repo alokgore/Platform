@@ -18,11 +18,11 @@ class FailedContractsMonitor extends TejasBackgroundJob
 {
     static final int FAILURE_THRESHOLD = ApplicationConfig.findInteger("dagmanager.monitoring.failedContractMonior.defaultFailureThreshold", 5);
     private static final int NAP_INTERVAL = ApplicationConfig.findInteger("dagmanager.monitoring.failedContractMonior.napInterval.seconds", 120) * 1000;
-    
-    static class FailedContractsMonitorTask implements Task
+
+    static class FailedContractsMonitorTask extends AbstractTejasTask
     {
         @Override
-        public void runIteration(TejasContext self) throws Exception
+        public void runIteration(TejasContext self, TejasBackgroundJob parent) throws Exception
         {
             Mapper mapper = self.dbl.getMybatisMapper(DAGMonitor.Mapper.class);
             List<ContractDetails> contracts = mapper.selectFailedContracts(FAILURE_THRESHOLD);
@@ -34,7 +34,7 @@ class FailedContractsMonitor extends TejasBackgroundJob
             }
         }
     }
-    
+
     public FailedContractsMonitor()
     {
         super(new FailedContractsMonitorTask(), new Configuration.Builder("FailedContractsMonitor", DAG_MANAGER, NAP_INTERVAL).build());

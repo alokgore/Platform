@@ -28,14 +28,14 @@ public class RandomObjectGenerator
         @SuppressWarnings("rawtypes")
         private Class clazz;
         private String propertyName;
-        
+
         @SuppressWarnings("rawtypes")
         public Property(Class clazz, String propertyName)
         {
             this.clazz = clazz;
             this.propertyName = propertyName;
         }
-        
+
         @Override
         public boolean equals(Object obj)
         {
@@ -47,19 +47,19 @@ public class RandomObjectGenerator
             }
             return false;
         }
-        
+
         @Override
         public int hashCode()
         {
             return this.clazz.getCanonicalName().hashCode() + this.propertyName.hashCode();
         }
     }
-    
+
     private interface TypeGenerator<T>
     {
         T generateRandomObject(Class<? extends T> clazz) throws Exception;
     }
-    
+
     private static class TypeGeneratorFactory
     {
         public static TypeGenerator<BigDecimal> bigDecimalGenerator()
@@ -72,7 +72,7 @@ public class RandomObjectGenerator
                 }
             };
         }
-        
+
         public static TypeGenerator<BigInteger> bigIntegerGenerator()
         {
             return new TypeGenerator<BigInteger>() {
@@ -83,7 +83,7 @@ public class RandomObjectGenerator
                 }
             };
         }
-        
+
         public static TypeGenerator<Boolean> boolGenerator()
         {
             return new TypeGenerator<Boolean>() {
@@ -94,7 +94,7 @@ public class RandomObjectGenerator
                 }
             };
         }
-        
+
         public static TypeGenerator<Date> dateGenerator()
         {
             return new TypeGenerator<Date>() {
@@ -105,7 +105,7 @@ public class RandomObjectGenerator
                 }
             };
         }
-        
+
         @SuppressWarnings("rawtypes")
         public static TypeGenerator<Enum> enumGenerator()
         {
@@ -118,7 +118,7 @@ public class RandomObjectGenerator
                 }
             };
         }
-        
+
         public static TypeGenerator<Integer> intGenerator()
         {
             return new TypeGenerator<Integer>() {
@@ -129,7 +129,7 @@ public class RandomObjectGenerator
                 }
             };
         }
-        
+
         public static TypeGenerator<Long> longGenerator()
         {
             return new TypeGenerator<Long>() {
@@ -140,7 +140,7 @@ public class RandomObjectGenerator
                 }
             };
         }
-        
+
         public static TypeGenerator<String> stringGenerator()
         {
             return new TypeGenerator<String>() {
@@ -151,7 +151,7 @@ public class RandomObjectGenerator
                 }
             };
         }
-        
+
         public static TypeGenerator<Timestamp> timestampGenerator()
         {
             return new TypeGenerator<Timestamp>() {
@@ -162,7 +162,7 @@ public class RandomObjectGenerator
                 }
             };
         }
-        
+
         public static TypeGenerator<XMLGregorianCalendar> xmlCalendarGenerator()
         {
             return new TypeGenerator<XMLGregorianCalendar>() {
@@ -176,39 +176,39 @@ public class RandomObjectGenerator
             };
         }
     }
-    
+
     public static RandomObjectGenerator getInstance()
     {
         return new RandomObjectGenerator();
     }
-    
+
     @SuppressWarnings("rawtypes")
     private Map<Class, TypeGenerator> typeRegistry = new ConcurrentHashMap<Class, TypeGenerator>();
-    
+
     @SuppressWarnings("rawtypes")
     private Map<Property, Class> propertyRegistry = new ConcurrentHashMap<Property, Class>();
-    
+
     private RandomObjectGenerator()
     {
         register(Long.class, TypeGeneratorFactory.longGenerator());
         register(Long.TYPE, TypeGeneratorFactory.longGenerator());
-        
+
         register(Integer.class, TypeGeneratorFactory.intGenerator());
         register(Integer.TYPE, TypeGeneratorFactory.intGenerator());
-        
+
         register(Boolean.class, TypeGeneratorFactory.boolGenerator());
         register(Boolean.TYPE, TypeGeneratorFactory.boolGenerator());
-        
+
         register(BigDecimal.class, TypeGeneratorFactory.bigDecimalGenerator());
         register(BigInteger.class, TypeGeneratorFactory.bigIntegerGenerator());
-        
+
         register(String.class, TypeGeneratorFactory.stringGenerator());
         register(Date.class, TypeGeneratorFactory.dateGenerator());
         register(Timestamp.class, TypeGeneratorFactory.timestampGenerator());
         register(XMLGregorianCalendar.class, TypeGeneratorFactory.xmlCalendarGenerator());
         register(Enum.class, TypeGeneratorFactory.enumGenerator());
     }
-    
+
     @SuppressWarnings({ "unchecked", "rawtypes" })
     private ArrayList getRandomCollection(Class clazz, PropertyDescriptor property, boolean tolerateHoles) throws Exception
     {
@@ -228,12 +228,13 @@ public class RandomObjectGenerator
         }
         return list;
     }
-    
+
     @SuppressWarnings("rawtypes")
-    private TypeGenerator getTypeGenerator(Class clazz)
+    private TypeGenerator getTypeGenerator(Class c)
     {
+        Class clazz = c;
         TypeGenerator typeGenerator = null;
-        while (clazz != null && !clazz.equals(Object.class))
+        while ((clazz != null) && !clazz.equals(Object.class))
         {
             typeGenerator = this.typeRegistry.get(clazz);
             if (typeGenerator != null)
@@ -244,28 +245,28 @@ public class RandomObjectGenerator
         }
         return typeGenerator;
     }
-    
+
     <T> void register(Class<T> clazz, TypeGenerator<T> typeGenerator)
     {
         this.typeRegistry.put(clazz, typeGenerator);
     }
-    
+
     void registerCollectionType(Class<?> clazz, String propertyName, Class<?> collectionType)
     {
         this.propertyRegistry.put(new Property(clazz, propertyName), collectionType);
     }
-    
+
     @SuppressWarnings("rawtypes")
     public Class getCollectionType(Class clazz, String propertyName)
     {
         return this.propertyRegistry.get(new Property(clazz, propertyName));
     }
-    
+
     public <T> T random(Class<T> clazz) throws Exception
     {
         return random(clazz, false);
     }
-    
+
     @SuppressWarnings({ "unchecked", "rawtypes" })
     public <T> T random(Class<T> clazz, boolean tolerateHoles) throws Exception
     {
@@ -277,27 +278,27 @@ public class RandomObjectGenerator
             }
             throw new IllegalStateException("Reached Object!");
         }
-        
+
         TypeGenerator typeGenerator;
         if ((typeGenerator = getTypeGenerator(clazz)) != null)
         {
             return (T) typeGenerator.generateRandomObject(clazz);
         }
-        
+
         System.out.println("Trying to generate an object of type " + clazz.getCanonicalName());
         T response = clazz.newInstance();
-        
+
         for (PropertyDescriptor property : PropertyUtils.getPropertyDescriptors(clazz))
         {
             if (List.class.isAssignableFrom(property.getPropertyType()))
             {
                 ArrayList list = getRandomCollection(clazz, property, tolerateHoles);
-                
+
                 if (property.getWriteMethod() != null)
                 {
                     property.getWriteMethod().invoke(response, new Vector());
                 }
-                
+
                 ((List) property.getReadMethod().invoke(response)).addAll(list);
             }
             else
@@ -310,7 +311,7 @@ public class RandomObjectGenerator
                 }
             }
         }
-        
+
         return response;
     }
 }

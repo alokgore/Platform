@@ -1,6 +1,5 @@
 package com.tejas.chanak.monitoring;
 
-
 import static com.tejas.core.enums.PlatformComponents.DAG_MANAGER;
 import static com.tejas.core.enums.TejasAlarms.SLOW_RUNNING_DAG;
 
@@ -23,21 +22,23 @@ class SlowDAGMonitor extends TejasBackgroundJob
     {
         super(new SlowDAGMonitorTask(), new Configuration.Builder("SlowDAGMonitor", DAG_MANAGER, NAP_INTERVAL).build());
     }
-    
-    public static class SlowDAGMonitorTask implements Task
+
+    public static class SlowDAGMonitorTask extends AbstractTejasTask
     {
         @Override
-        public void runIteration(TejasContext self) throws Exception
+        public void runIteration(TejasContext self, TejasBackgroundJob parent) throws Exception
         {
             Timestamp slowThresholdTimestamp = new Timestamp(System.currentTimeMillis() - SLOW_DAG_THRESHOLD);
 
             Mapper mapper = self.dbl.getMybatisMapper(DAGMonitor.Mapper.class);
             List<DAGSummary> slowDAGs = mapper.selectSlowDAGs(slowThresholdTimestamp);
-            
+
             for (DAGSummary dag : slowDAGs)
             {
                 long timeSpentOnDAG = System.currentTimeMillis() - dag.start_time.getTime();
-                String msg = "DAG seems to be running too slow (" + (timeSpentOnDAG / 60000L) + " minutes). DAGID = [" + dag.dag_id + "]. Description = [" + dag.description+ "]";
+                String msg =
+                        "DAG seems to be running too slow (" + (timeSpentOnDAG / 60000L) + " minutes). DAGID = [" + dag.dag_id + "]. Description = [" + dag.description
+                                + "]";
                 self.alarm(Severity.ERROR, DAG_MANAGER, SLOW_RUNNING_DAG, "", msg);
             }
         }

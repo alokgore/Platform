@@ -22,7 +22,7 @@ import com.tejas.types.exceptions.DBLayerException;
 
 class SlowContractsMonitor extends TejasBackgroundJob
 {
-    static class SlowContractsMonitorTask implements Task
+    static class SlowContractsMonitorTask extends AbstractTejasTask
     {
         /**
          * Keeping the in-memory and in-DB state in sync has never been too pleasant. There is an edge case in our way of doing things too. ContractEnqueuer
@@ -43,7 +43,7 @@ class SlowContractsMonitor extends TejasBackgroundJob
             {
                 return;
             }
-            
+
             /**
              * ContractRunner does not know about it. This could mean two things 1) ContractRunner had finished the contract long time back but failed to update
              * the DB state 2) ContractRunner finished the execution of the contract between a) The time we ran "select" to find the slow contracts AND b) Now
@@ -52,7 +52,7 @@ class SlowContractsMonitor extends TejasBackgroundJob
              */
             com.tejas.chanak.types.DAGContract.Mapper mapper = self.dbl.getMybatisMapper(DAGContract.Mapper.class);
             long numRowsUpdated = mapper.revive(new RevivalCondition(contractID, lastUpdationTime)).longValue();
-            
+
             long timeSinceLastUpdate = System.currentTimeMillis() - lastUpdationTime.getTime();
             if (numRowsUpdated == 1)
             {
@@ -61,36 +61,36 @@ class SlowContractsMonitor extends TejasBackgroundJob
                 new LogEntry(dagID, contractID, msg).insertIntoDB(self);
             }
         }
-        
+
         @Override
-        public void runIteration(TejasContext self) throws Exception
+        public void runIteration(TejasContext self, TejasBackgroundJob parent) throws Exception
         {
             Timestamp slowThresholdTimestamp = new Timestamp(System.currentTimeMillis() - SLOW_CONTRACT_THRESHOLD);
-            
+
             Mapper mapper = self.dbl.getMybatisMapper(DAGMonitor.Mapper.class);
             List<ContractDetails> slowContracts = mapper.selectSlowContracts(slowThresholdTimestamp);
-            
+
             for (ContractDetails contract : slowContracts)
             {
                 long timeSpentOnContract = System.currentTimeMillis() - contract.start_time.getTime();
                 String msg = "Contract seems to be running too slow (" + (timeSpentOnContract / 60000L) + " minutes)";
-                
+
                 AlarmThreshold defaultAlarmThreshold = getExecutionTimeThreshold(SLOW_CONTRACT_THRESHOLD, TejasAlarms.SLOW_RUNNING_CONTRACT, "", ERROR);
                 MonitoringUtils.raiseAlarm(self, contract.dag_id, contract.contract_id, SLOW_CONTRACT_THRESHOLD, defaultAlarmThreshold, msg);
-                
+
                 reviveContract(self, contract.dag_id, contract.contract_id, contract.last_updated);
             }
         }
-        
+
     }
-    
+
     private static final int NAP_INTERVAL = ApplicationConfig.findInteger("dagmanager.monitoring.slowContractMonior.napInterval.seconds", 120) * 1000;
     static final long SLOW_CONTRACT_THRESHOLD =
             ApplicationConfig.findInteger("dagmanager.monitoring.slowContractMonior.defaultSlowContractThreshold.minutes", 40) * 60L * 1000L;
-    
+
     public SlowContractsMonitor()
     {
         super(new SlowContractsMonitorTask(), new Configuration.Builder("SlowContractsMonitor", DAG_MANAGER, NAP_INTERVAL).build());
     }
-    
+
 }

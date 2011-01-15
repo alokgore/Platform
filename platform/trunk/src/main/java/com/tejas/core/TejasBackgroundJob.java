@@ -11,7 +11,6 @@ import com.tejas.core.TejasEventHandler.Severity;
 import com.tejas.core.enums.TejasAlarms;
 import com.tejas.utils.misc.StringUtils;
 
-
 /**
  * Base class for all the background jobs. <br>
  * This class is preferred over
@@ -50,6 +49,14 @@ public class TejasBackgroundJob
         {
             this.configuration = configuration;
             this.task = task;
+            try
+            {
+                this.task.init(new TejasContext());
+            }
+            catch (Exception e)
+            {
+                throw new RuntimeException(e);
+            }
             this.setDaemon(true);
         }
 
@@ -58,9 +65,9 @@ public class TejasBackgroundJob
             String exceptionMessage = "";
             try
             {
-                self.entry(configuration.jobName.replace(' ', '_'));
+                self.entry(this.configuration.jobName.replace(' ', '_'));
                 iterateInner();
-                _exceptionCount = -1;
+                this._exceptionCount = -1;
             }
             catch (InterruptedException e)
             {
@@ -74,15 +81,16 @@ public class TejasBackgroundJob
             }
             finally
             {
-                _exceptionCount = ((_exceptionCount + 1) % (Integer.MAX_VALUE - 1));
-                if (_exceptionCount > configuration.exceptionThreshold)
+                this._exceptionCount = ((this._exceptionCount + 1) % (Integer.MAX_VALUE - 1));
+                if (this._exceptionCount > this.configuration.exceptionThreshold)
                 {
-                    self.alarm(configuration.alarmSeverity, configuration.componentName, configuration.alarmName, configuration.deduplicationString, "Name = ("
-                            + getName() + ")"
-                            + TejasBackgroundJob.this.getClass().getSimpleName() + exceptionMessage);
+                    self.alarm(this.configuration.alarmSeverity, this.configuration.componentName, this.configuration.alarmName, this.configuration.deduplicationString,
+                            "Name = ("
+                                    + getName() + ")"
+                                    + TejasBackgroundJob.this.getClass().getSimpleName() + exceptionMessage);
                 }
 
-                self.exit(_exceptionCount == 0 ? ExitStatus.Success : ExitStatus.Failure);
+                self.exit(this._exceptionCount == 0 ? ExitStatus.Success : ExitStatus.Failure);
             }
         }
 
@@ -96,9 +104,9 @@ public class TejasBackgroundJob
                  * This call will make this thread sleep for napIntervalMillis if no-one calls "expediteExecution()" We take a nap before calling
                  * "runIteration()", so we don't go into a tight loop if "runIteration()" misbehaves.
                  */
-                getExpeditionTrigger().tryAcquire(configuration.napIntervalMillis, TimeUnit.MILLISECONDS);
+                getExpeditionTrigger().tryAcquire(this.configuration.napIntervalMillis, TimeUnit.MILLISECONDS);
 
-                task.runIteration(self);
+                this.task.runIteration(self, TejasBackgroundJob.this);
             }
             finally
             {
@@ -119,32 +127,43 @@ public class TejasBackgroundJob
 
         public synchronized final void expediteExecution()
         {
-            expeditionTrigger.release();
+            this.expeditionTrigger.release();
         }
 
         public final Semaphore getExpeditionTrigger()
         {
-            return expeditionTrigger;
+            return this.expeditionTrigger;
         }
 
         public final ExceptionDetails getLastSeenException()
         {
-            return lastSeenException;
+            return this.lastSeenException;
         }
 
         @Override
         public void run()
         {
-            this.setName(configuration.jobName);
+            this.setName(this.configuration.jobName);
             TejasContext self = new TejasContext();
-            self.logger.info("Starting background job [", configuration.jobName, "] wtih a napTime of [" + configuration.napIntervalMillis + "] millis");
+            self.logger.info("Starting background job [", this.configuration.jobName, "] wtih a napTime of [" + this.configuration.napIntervalMillis + "] millis");
+
             while (!isShuttingDown())
             {
                 iterate(self.clone());
             }
+
+            try
+            {
+                this.task.shutdown(self.clone());
+            }
+            catch (Exception e)
+            {
+                self.logger.warn("Task cleanup failed ", e);
+            }
+
             setActive(false);
             setShuttingDown(false);
-            self.logger.info("Job [", configuration.jobName, "] down.");
+            self.logger.info("Job [", this.configuration.jobName, "] down.");
         }
 
         public final void setExpeditionTrigger(Semaphore expeditionTrigger)
@@ -238,7 +257,39 @@ public class TejasBackgroundJob
 
     public interface Task
     {
-        void runIteration(TejasContext self) throws Exception;
+        /**
+         * Called once in the lifecycle of the {@link TejasBackgroundJob}. Can be used to initialize resources required by
+         * {@link #runIteration(TejasContext, TejasBackgroundJob)}
+         * 
+         * @throws Exception
+         */
+        void init(TejasContext self) throws Exception;
+
+        /**
+         * Called for each iteration with a reference to the parent {@link TejasBackgroundJob} and a new copy of {@link TejasContext})
+         */
+        void runIteration(TejasContext self, TejasBackgroundJob parent) throws Exception;
+
+        /**
+         * Called once during the shutdown. The {@link #runIteration(TejasContext, TejasBackgroundJob)} method is not supposed to behave after this method has
+         * been called
+         */
+        void shutdown(TejasContext self) throws Exception;
+    }
+
+    public static abstract class AbstractTejasTask implements Task
+    {
+        @Override
+        public void init(TejasContext self) throws Exception
+        {
+            // NOOP
+        }
+
+        @Override
+        public void shutdown(TejasContext self)
+        {
+            // NOOP
+        }
     }
 
     private static final int WORKER_SHUTDOWN_WAIT = ApplicationConfig.findInteger("Tejas.backgroundjobs.workerShutdownWait", 2000);
@@ -277,12 +328,12 @@ public class TejasBackgroundJob
      */
     public synchronized final void expediteExecution()
     {
-        worker.getExpeditionTrigger().release();
+        this.worker.getExpeditionTrigger().release();
     }
 
     public final synchronized long getLastJobRunTime()
     {
-        return lastUpdated;
+        return this.lastUpdated;
     }
 
     /**
@@ -291,12 +342,12 @@ public class TejasBackgroundJob
      */
     public final synchronized boolean isActive()
     {
-        return isActive;
+        return this.isActive;
     }
 
     public final synchronized boolean isShuttingDown()
     {
-        return shuttingDown;
+        return this.shuttingDown;
     }
 
     /**
@@ -309,13 +360,13 @@ public class TejasBackgroundJob
     public final synchronized void signalShutdown()
     {
         setShuttingDown(true);
-        worker.interrupt();
+        this.worker.interrupt();
         try
         {
             /*
              * The reason to wait here, is to give the worker a chance to go down with dignity, before the JVM start killing people
              */
-            worker.join(WORKER_SHUTDOWN_WAIT);
+            this.worker.join(WORKER_SHUTDOWN_WAIT);
         }
         catch (InterruptedException interruptedException)
         {
@@ -331,7 +382,7 @@ public class TejasBackgroundJob
             return;
         }
 
-        worker.start();
+        this.worker.start();
         setActive(true);
     }
 
@@ -346,6 +397,6 @@ public class TejasBackgroundJob
     @Override
     public final String toString()
     {
-        return worker.toString();
+        return this.worker.toString();
     }
 }
