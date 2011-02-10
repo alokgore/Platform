@@ -66,11 +66,11 @@ public final class TejasContext implements Cloneable
 
     private StopWatch stopWatch;
 
-    private final TejasEventHandler alarm = TejasResourceFactory.getAlarmHandler();
+    private final TejasEventHandler alarm;
 
-    public final TejasLogger logger = TejasResourceFactory.getLogger();
+    public final TejasLogger logger;
 
-    public final TejasMetricsHandler metrics = TejasResourceFactory.getMetricsHandler();
+    public final TejasMetricsHandler metrics;
 
     public final TejasDBLayer dbl;
 
@@ -81,9 +81,17 @@ public final class TejasContext implements Cloneable
 
     public TejasContext(TejasDBLayer dbl)
     {
+        this(dbl, TejasResourceFactory.getLogger(), TejasResourceFactory.getAlarmHandler(), TejasResourceFactory.getMetricsHandler());
+    }
+
+    public TejasContext(TejasDBLayer dbl, TejasLogger logger, TejasEventHandler alarm, TejasMetricsHandler metrics)
+    {
         this.grID = generateId("G");
         this.lrID = generateId("L");
 
+        this.logger = logger;
+        this.alarm = alarm;
+        this.metrics = metrics;
         this.dbl = dbl;
 
         this.logger.addContextInformation(this.grID);
@@ -131,7 +139,8 @@ public final class TejasContext implements Cloneable
     @Override
     public TejasContext clone()
     {
-        return new TejasContext();
+        TejasContext clone = new TejasContext(this.dbl.clone(), this.logger, this.alarm, this.metrics);
+        return clone;
     }
 
     /**

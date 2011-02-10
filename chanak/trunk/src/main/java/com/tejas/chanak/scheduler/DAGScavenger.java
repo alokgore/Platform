@@ -21,7 +21,7 @@ class DAGScavenger extends TejasBackgroundJob
 
     public DAGScavenger()
     {
-        super(new DAGScavengerTask(), new Configuration.Builder("DAGScavenger", PlatformComponents.DAG_MANAGER, NAP_TIME).build());
+        super(new TejasContext(), new DAGScavengerTask(), new Configuration.Builder("DAGScavenger", PlatformComponents.DAG_MANAGER, NAP_TIME).build());
     }
 
 }

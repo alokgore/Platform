@@ -20,7 +20,7 @@ class SlowDAGMonitor extends TejasBackgroundJob
 
     public SlowDAGMonitor()
     {
-        super(new SlowDAGMonitorTask(), new Configuration.Builder("SlowDAGMonitor", DAG_MANAGER, NAP_INTERVAL).build());
+        super(new TejasContext(), new SlowDAGMonitorTask(), new Configuration.Builder("SlowDAGMonitor", DAG_MANAGER, NAP_INTERVAL).build());
     }
 
     public static class SlowDAGMonitorTask extends AbstractTejasTask

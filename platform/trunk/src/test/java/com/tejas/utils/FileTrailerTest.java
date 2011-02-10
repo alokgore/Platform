@@ -68,9 +68,15 @@ public class FileTrailerTest
     @Test
     public void testFileTrailer() throws Exception
     {
-        FileTailer tailer = new FileTailer(new File("/var/log/tejas/tejas.log"), new CallbackHook());
-
         TejasContext self = new TejasContext();
+
+        FileTailer passwdTailer = new FileTailer(self, new File("/etc/passwd"), new CallbackHook(), true);
+        passwdTailer.start(self);
+        Thread.sleep(1000);
+        Assert.isFalse(passwdTailer.isActive());
+
+        FileTailer tailer = new FileTailer(self, new File("/var/log/tejas/tejas.log"), new CallbackHook(), false);
+
         tailer.start(self);
 
         for (int i = 0; i < 10; i++)

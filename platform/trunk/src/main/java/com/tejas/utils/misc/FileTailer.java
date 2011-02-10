@@ -102,6 +102,18 @@ public class FileTailer
         private final FileChannel channel;
         private final DataListener listener;
         private final String fileName;
+        private transient boolean closed = false;
+        private boolean autoStop;
+
+        public synchronized boolean isAutoStop()
+        {
+            return this.autoStop;
+        }
+
+        public synchronized void setAutoStop(boolean autoStop)
+        {
+            this.autoStop = autoStop;
+        }
 
         public String getFileName()
         {
@@ -117,9 +129,10 @@ public class FileTailer
 
         private List<Byte> currentLine = new ArrayList<Byte>(AVERAGE_LINE_LENGTH);
 
-        public FileTailerTask(File file, DataListener listener) throws IOException
+        public FileTailerTask(File file, DataListener listener, boolean autoStop) throws IOException
         {
             this.listener = Assert.notNull(listener);
+            this.autoStop = autoStop;
             Assert.isTrue(Assert.notNull(file).canRead(), "File [" + file + "] is not readable");
 
             this.fileName = file.getAbsolutePath();
@@ -157,13 +170,18 @@ public class FileTailer
         {
             try
             {
-                self.logger.info("Stopping the tail process on [" + this.fileName + "]");
-                this.channel.close();
+                if (!this.closed)
+                {
+                    self.logger.info("Stopping the tail process on [" + this.fileName + "]");
+                    this.channel.close();
+                }
             }
             catch (IOException e)
             {
                 // Ignore. We are shutting down in any case!
             }
+
+            this.closed = true;
         }
 
         @Override
@@ -174,16 +192,40 @@ public class FileTailer
                 return;
             }
 
+            long oldPosition = this.channel.position();
             ByteBuffer byteBuffer = ByteBuffer.allocate(CHANNEL_SIZE);
             int numCharsRead = this.channel.read(byteBuffer);
-            self.logger.debug("Read ", numCharsRead, " bytes");
+            self.logger.trace("Read [", numCharsRead, "] bytes from file [", this.fileName, "]  position [", oldPosition, "]");
 
             if (numCharsRead < 1)
             {
                 // End of File
+                if (isAutoStop())
+                {
+                    self.logger.info("(Auto)stopping the tail process on ", this.fileName);
+                    markCompletion(self);
+                    parent.signalShutdown();
+                }
                 return;
             }
 
+            List<String> lines = readBuffer(byteBuffer);
+
+            try
+            {
+                processData(self, lines, this.channel.position());
+
+            }
+            catch (Exception e)
+            {
+                self.logger.error("Exception in processing file data", e);
+                self.logger.error("Resetting the file pointer back to [" + oldPosition + "]");
+                this.channel.position(oldPosition);
+            }
+        }
+
+        private List<String> readBuffer(ByteBuffer byteBuffer)
+        {
             // Make it ready for reads
             byteBuffer.flip();
 
@@ -203,20 +245,12 @@ public class FileTailer
                     this.currentLine.add(b);
                 }
             }
-            processData(self, lines, this.channel.position());
+            return lines;
         }
 
-        private void processData(TejasContext self, List<String> lines, long position)
+        private void processData(TejasContext self, List<String> lines, long position) throws Exception
         {
-            try
-            {
-                this.listener.processNewData(lines, position);
-            }
-            catch (Exception e)
-            {
-                // XXX: Need retry with exponential back-offs here
-                self.logger.error("Exception in processing file data [" + lines + "]", e);
-            }
+            this.listener.processNewData(lines, position);
 
             DatabaseMapper mapper = self.dbl.getMybatisMapper(DatabaseMapper.class);
             mapper.update(new FilePositionData(this.fileName, position));
@@ -225,14 +259,24 @@ public class FileTailer
 
     private static final int CHANNEL_SIZE = 64 * 1024;
     private TejasBackgroundJob worker;
+
+    public final boolean isActive()
+    {
+        return this.worker.isActive();
+    }
+
     private FileTailerTask fileTailerTask;
 
-    public FileTailer(File file, DataListener listener) throws IOException
+    /**
+     * @param autoStop
+     *            Stop tailing the file after it has read all the data (tail without --follow)
+     */
+    public FileTailer(TejasContext self, File file, DataListener listener, boolean autoStop) throws IOException
     {
         String jobName = "File Tailer - " + file.getAbsolutePath();
         Configuration configuration = new Configuration.Builder(jobName, PLATFORM_UTIL_LIB, 100).build();
-        this.fileTailerTask = new FileTailerTask(file, listener);
-        this.worker = new TejasBackgroundJob(this.fileTailerTask, configuration);
+        this.fileTailerTask = new FileTailerTask(file, listener, autoStop);
+        this.worker = new TejasBackgroundJob(self, this.fileTailerTask, configuration);
     }
 
     public void start(TejasContext self)
@@ -243,21 +287,34 @@ public class FileTailer
 
     /**
      * Stop the tail process for now. <br>
-     * This leaves the {@link TailStatus} in {@link TailStatus#InProgress}, which means that the next time a tail process is brought up, it will start from the
-     * point where we are leaving
+     * This leaves the {@link TailStatus} in {@link TailStatus#InProgress}, which means that the next time this a process is brought up on this file, it will
+     * start from the point where this process stopped
      */
     public void stop(TejasContext self)
     {
-        self.logger.info("Signaling the tail process on file [" + this.fileTailerTask.getFileName() + "] to go down");
-        this.worker.signalShutdown();
+        stop(self, TailStatus.InProgress);
     }
 
     /**
-     * Stop the tail process and mark it Complete in the database<br>
+     * Stop the tail process.
+     * 
+     * @param status
+     *            If the value of this parameter is {@link TailStatus#Complete}, this marks the tail process on this file as complete and any subsequent request
+     *            to tail the file again will fail with {@link IllegalStateException}. <br>
+     *            If the value of this parameter is {@link TailStatus#InProgress}, the next tail process on this file will start from the point we are at now
      */
-    public void markComplete(TejasContext self)
+    public void stop(TejasContext self, TailStatus status)
     {
+        self.logger.info("Signaling the tail process on file [" + this.fileTailerTask.getFileName() + "] to go down");
         this.worker.signalShutdown();
-        this.fileTailerTask.markCompletion(self);
+        if (status == TailStatus.Complete)
+        {
+            this.fileTailerTask.markCompletion(self);
+        }
+    }
+
+    public void stopTailingAfterEOF()
+    {
+        this.fileTailerTask.setAutoStop(true);
     }
 }

@@ -39,14 +39,16 @@ public class TejasBackgroundJob
 {
     class Worker extends Thread
     {
+        private TejasContext self;
         private int _exceptionCount;
         private final Configuration configuration;
         private final Task task;
         private ExceptionDetails lastSeenException;
         private Semaphore expeditionTrigger = new Semaphore(0);
 
-        Worker(Configuration configuration, Task task)
+        Worker(TejasContext self, Configuration configuration, Task task)
         {
+            this.self = self;
             this.configuration = configuration;
             this.task = task;
             try
@@ -60,43 +62,43 @@ public class TejasBackgroundJob
             this.setDaemon(true);
         }
 
-        private void iterate(TejasContext self)
+        private void iterate(TejasContext context)
         {
             String exceptionMessage = "";
             try
             {
-                self.entry(this.configuration.jobName.replace(' ', '_'));
-                iterateInner();
+                context.entry(this.configuration.jobName.replace(' ', '_'));
+                iterateInner(context);
                 this._exceptionCount = -1;
             }
             catch (InterruptedException e)
             {
-                self.logger.info(TejasBackgroundJob.this, "] got InterruptedException. Looks like we are going down");
+                context.logger.info(TejasBackgroundJob.this, "] got InterruptedException. Looks like we are going down");
             }
             catch (Throwable t)
             {
                 exceptionMessage = StringUtils.serializeToString(t);
                 setLastSeenException(t);
-                self.logger.error(getName(), t, TejasBackgroundJob.this, " Got exception");
+                context.logger.error(getName(), t, TejasBackgroundJob.this, " Got exception");
             }
             finally
             {
                 this._exceptionCount = ((this._exceptionCount + 1) % (Integer.MAX_VALUE - 1));
                 if (this._exceptionCount > this.configuration.exceptionThreshold)
                 {
-                    self.alarm(this.configuration.alarmSeverity, this.configuration.componentName, this.configuration.alarmName, this.configuration.deduplicationString,
+                    context.alarm(this.configuration.alarmSeverity, this.configuration.componentName, this.configuration.alarmName,
+                            this.configuration.deduplicationString,
                             "Name = ("
                                     + getName() + ")"
                                     + TejasBackgroundJob.this.getClass().getSimpleName() + exceptionMessage);
                 }
 
-                self.exit(this._exceptionCount == 0 ? ExitStatus.Success : ExitStatus.Failure);
+                context.exit(this._exceptionCount == 0 ? ExitStatus.Success : ExitStatus.Failure);
             }
         }
 
-        private void iterateInner() throws Exception
+        private void iterateInner(TejasContext context) throws Exception
         {
-            TejasContext self = new TejasContext();
             try
             {
 
@@ -106,7 +108,7 @@ public class TejasBackgroundJob
                  */
                 getExpeditionTrigger().tryAcquire(this.configuration.napIntervalMillis, TimeUnit.MILLISECONDS);
 
-                this.task.runIteration(self, TejasBackgroundJob.this);
+                this.task.runIteration(context, TejasBackgroundJob.this);
             }
             finally
             {
@@ -144,26 +146,25 @@ public class TejasBackgroundJob
         public void run()
         {
             this.setName(this.configuration.jobName);
-            TejasContext self = new TejasContext();
-            self.logger.info("Starting background job [", this.configuration.jobName, "] wtih a napTime of [" + this.configuration.napIntervalMillis + "] millis");
+            this.self.logger.info("Starting background job [", this.configuration.jobName, "] wtih a napTime of [" + this.configuration.napIntervalMillis + "] millis");
 
             while (!isShuttingDown())
             {
-                iterate(self.clone());
+                iterate(this.self.clone());
             }
 
             try
             {
-                this.task.shutdown(self.clone());
+                this.task.shutdown(this.self.clone());
             }
             catch (Exception e)
             {
-                self.logger.warn("Task cleanup failed ", e);
+                this.self.logger.warn("Task cleanup failed ", e);
             }
 
             setActive(false);
             setShuttingDown(false);
-            self.logger.info("Job [", this.configuration.jobName, "] down.");
+            this.self.logger.info("Job [", this.configuration.jobName, "] down.");
         }
 
         public final void setExpeditionTrigger(Semaphore expeditionTrigger)
@@ -302,9 +303,9 @@ public class TejasBackgroundJob
 
     protected long lastUpdated;
 
-    public TejasBackgroundJob(Task task, Configuration configuration)
+    public TejasBackgroundJob(TejasContext self, Task task, Configuration configuration)
     {
-        this.worker = new Worker(configuration, task);
+        this.worker = new Worker(self, configuration, task);
         setLastUpdated(System.currentTimeMillis());
     }
 
@@ -364,7 +365,7 @@ public class TejasBackgroundJob
         try
         {
             /*
-             * The reason to wait here, is to give the worker a chance to go down with dignity, before the JVM start killing people
+             * The reason to wait here, is to give the worker a chance to go down with dignity, before the JVM starts killing people
              */
             this.worker.join(WORKER_SHUTDOWN_WAIT);
         }

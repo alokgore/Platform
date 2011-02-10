@@ -90,7 +90,7 @@ class SlowContractsMonitor extends TejasBackgroundJob
 
     public SlowContractsMonitor()
     {
-        super(new SlowContractsMonitorTask(), new Configuration.Builder("SlowContractsMonitor", DAG_MANAGER, NAP_INTERVAL).build());
+        super(new TejasContext(), new SlowContractsMonitorTask(), new Configuration.Builder("SlowContractsMonitor", DAG_MANAGER, NAP_INTERVAL).build());
     }
 
 }

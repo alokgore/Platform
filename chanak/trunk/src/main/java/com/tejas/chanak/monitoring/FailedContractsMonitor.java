@@ -37,6 +37,6 @@ class FailedContractsMonitor extends TejasBackgroundJob
 
     public FailedContractsMonitor()
     {
-        super(new FailedContractsMonitorTask(), new Configuration.Builder("FailedContractsMonitor", DAG_MANAGER, NAP_INTERVAL).build());
+        super(new TejasContext(), new FailedContractsMonitorTask(), new Configuration.Builder("FailedContractsMonitor", DAG_MANAGER, NAP_INTERVAL).build());
     }
 }

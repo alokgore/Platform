@@ -15,4 +15,6 @@ public interface TejasDBLayer extends Cloneable
     public void startTransaction();
 
     public void startTransaction(TransactionIsolationLevel isolation);
+
+    TejasDBLayer clone();
 }

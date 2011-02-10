@@ -46,6 +46,6 @@ class ContractEnqueuer extends TejasBackgroundJob
 
     public ContractEnqueuer(DAGScheduler scheduler)
     {
-        super(new ContractEnqueuerTask(scheduler), new Configuration.Builder("DAGContractEnqueuer", PlatformComponents.DAG_MANAGER, NAP_TIME).build());
+        super(new TejasContext(), new ContractEnqueuerTask(scheduler), new Configuration.Builder("DAGContractEnqueuer", PlatformComponents.DAG_MANAGER, NAP_TIME).build());
     }
 }
