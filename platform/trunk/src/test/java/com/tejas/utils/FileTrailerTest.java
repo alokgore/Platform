@@ -19,6 +19,7 @@ import com.tejas.utils.misc.FileTailer.DataListener;
 import com.tejas.utils.misc.FileTailer.DatabaseMapper;
 import com.tejas.utils.misc.FileTailer.FilePositionData;
 import com.tejas.utils.misc.FileTailer.TailStatus;
+import com.tejas.utils.misc.StringUtils;
 
 /**
  * Furji test. One should verify things manually until this becomes better.
@@ -42,6 +43,15 @@ public class FileTrailerTest
             {
                 System.out.println(line);
             }
+        }
+    }
+
+    public static class SilentCallbackHook implements DataListener
+    {
+        @Override
+        public void processNewData(List<String> lines, long currentFilePosition)
+        {
+            // Silence!
         }
     }
 
@@ -79,12 +89,30 @@ public class FileTrailerTest
 
         tailer.start(self);
 
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < 5; i++)
         {
             System.err.println("Main thread waiting");
-            Thread.sleep(1000);
+            Thread.sleep(50);
         }
 
         tailer.stop(self);
+    }
+
+    @Test
+    public void testBigFile() throws Exception
+    {
+        TejasContext self = new TejasContext();
+
+        File file = new File("/tmp/alok/big_file.txt");
+        FileTailer tailer = new FileTailer(self, file, new SilentCallbackHook(), true);
+
+        long start = System.currentTimeMillis();
+        tailer.start(self);
+        Assert.isTrue(tailer.isActive());
+
+        System.err.println("Waiting for the tailer to complete");
+        tailer.join(0);
+        System.err.println("Tailer done! Took " + StringUtils.millisToPrintableString(System.currentTimeMillis() - start) + " for file of length "
+                + ((float) file.length()) / (1024 * 1024) + " MB");
     }
 }

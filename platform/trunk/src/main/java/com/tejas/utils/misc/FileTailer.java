@@ -4,10 +4,12 @@ import static com.tejas.core.enums.PlatformComponents.PLATFORM_UTIL_LIB;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import org.apache.ibatis.annotations.Insert;
@@ -71,10 +73,12 @@ public class FileTailer
                 "file_name varchar(512) unique key, " +
                 "file_position int(11), " +
                 "tail_status varchar(64), " +
+                "start_time datetime, " +
+                "end_time datetime default null, " +
                 "last_updated timestamp)")
         public void createTable();
 
-        @Insert("insert ignore into tejas_file_tailer_log(file_name, file_position, tail_status) values (#{fileName}, #{filePosition}, 'InProgress')")
+        @Insert("insert ignore into tejas_file_tailer_log(file_name, file_position, start_time, tail_status) values (#{fileName}, #{filePosition}, now(), 'InProgress')")
         public void insert(FilePositionData record);
 
         @Update("update tejas_file_tailer_log set file_position = #{filePosition} where file_name = #{fileName}")
@@ -86,7 +90,7 @@ public class FileTailer
         @Select("select tail_status from tejas_file_tailer_log where file_name = #{fileName}")
         public TailStatus readStatus(String fileName);
 
-        @Update("update tejas_file_tailer_log set tail_status  = 'Complete' where file_name = #{fileName}")
+        @Update("update tejas_file_tailer_log set tail_status  = 'Complete', end_time = now() where file_name = #{fileName}")
         public void markTailComplete(String fileName);
     }
 
@@ -125,11 +129,12 @@ public class FileTailer
             self.logger.info("Marking the tail process on [" + this.fileName + "] Complete");
             DatabaseMapper mapper = self.dbl.getMybatisMapper(DatabaseMapper.class);
             mapper.markTailComplete(this.fileName);
+            FileTailer.this.endTime = new Date();
         }
 
         private List<Byte> currentLine = new ArrayList<Byte>(AVERAGE_LINE_LENGTH);
 
-        public FileTailerTask(File file, DataListener listener, boolean autoStop) throws IOException
+        public FileTailerTask(File file, DataListener listener, boolean autoStop)
         {
             this.listener = Assert.notNull(listener);
             this.autoStop = autoStop;
@@ -139,7 +144,14 @@ public class FileTailer
             Assert.isTrue(this.fileName.length() < MAX_FILENAME_LENGTH, "File Name is too long. Limit on the file-name is " + MAX_FILENAME_LENGTH + ". Filename was ["
                     + this.fileName + "]");
 
-            this.channel = new FileInputStream(file).getChannel();
+            try
+            {
+                this.channel = new FileInputStream(file).getChannel();
+            }
+            catch (FileNotFoundException e)
+            {
+                throw new RuntimeException(e);
+            }
         }
 
         private byte[] getBytes(List<Byte> line)
@@ -184,16 +196,26 @@ public class FileTailer
             this.closed = true;
         }
 
+        private transient boolean moreDataAvailable;
+
+        @Override
+        public boolean shouldTakeANap()
+        {
+            return this.moreDataAvailable == false;
+        }
+
         @Override
         public void runIteration(TejasContext self, TejasBackgroundJob parent) throws Exception
         {
+            this.moreDataAvailable = false;
+
             if (this.channel.isOpen() == false)
             {
                 return;
             }
 
             long oldPosition = this.channel.position();
-            ByteBuffer byteBuffer = ByteBuffer.allocate(CHANNEL_SIZE);
+            ByteBuffer byteBuffer = ByteBuffer.allocate(CHANNEL_READ_SIZE);
             int numCharsRead = this.channel.read(byteBuffer);
             self.logger.trace("Read [", numCharsRead, "] bytes from file [", this.fileName, "]  position [", oldPosition, "]");
 
@@ -208,6 +230,9 @@ public class FileTailer
                 }
                 return;
             }
+
+            // This will make sure that we do not take a nap after this iteration
+            this.moreDataAvailable = true;
 
             List<String> lines = readBuffer(byteBuffer);
 
@@ -257,7 +282,7 @@ public class FileTailer
         }
     }
 
-    private static final int CHANNEL_SIZE = 64 * 1024;
+    private static final int CHANNEL_READ_SIZE = 1024 * 1024;
     private TejasBackgroundJob worker;
 
     public final boolean isActive()
@@ -266,13 +291,27 @@ public class FileTailer
     }
 
     private FileTailerTask fileTailerTask;
+    private Date startTime;
+
+    public synchronized Date getStartTime()
+    {
+        return this.startTime;
+    }
+
+    public synchronized Date getEndTime()
+    {
+        return this.endTime;
+    }
+
+    Date endTime;
 
     /**
      * @param autoStop
      *            Stop tailing the file after it has read all the data (tail without --follow)
      */
-    public FileTailer(TejasContext self, File file, DataListener listener, boolean autoStop) throws IOException
+    public FileTailer(TejasContext self, File file, DataListener listener, boolean autoStop)
     {
+        Assert.isTrue(file.exists(), "File [" + file + "] does not exist");
         String jobName = "File Tailer - " + file.getAbsolutePath();
         Configuration configuration = new Configuration.Builder(jobName, PLATFORM_UTIL_LIB, 100).build();
         this.fileTailerTask = new FileTailerTask(file, listener, autoStop);
@@ -282,7 +321,18 @@ public class FileTailer
     public void start(TejasContext self)
     {
         self.logger.info("Starting a tail process on file [" + this.fileTailerTask.getFileName() + "]");
+        this.startTime = new Date();
         this.worker.start();
+    }
+
+    /**
+     * @param timeout
+     * @throws InterruptedException
+     * @see com.tejas.core.TejasBackgroundJob#join(int)
+     */
+    public void join(int timeout) throws InterruptedException
+    {
+        this.worker.join(timeout);
     }
 
     /**
@@ -317,4 +367,5 @@ public class FileTailer
     {
         this.fileTailerTask.setAutoStop(true);
     }
+
 }

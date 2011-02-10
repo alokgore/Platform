@@ -56,10 +56,7 @@ public class DateTimeUtils
         return cal.getTime();
     }
 
-    /**
-     * @see #getNormalizedTimeInTZ(Timestamp, Schedule, TimeZone)
-     */
-    public static Timestamp getNormalizedTime(Timestamp time, Schedule schedule)
+    public static Date getNormalizedTime(Date time, Schedule schedule)
     {
         return getNormalizedTimeInTZ(time, schedule, TimeZone.getDefault());
     }
@@ -70,7 +67,7 @@ public class DateTimeUtils
      * <li>If the schedule is {@link Schedule#Hourly}, this operation would set minutes, seconds and milliseconds part to zero</li>
      * <li>If the schedule is {@link Schedule#Monthly}, this operation would set date=1, (hour, minute, seconds and milliseconds) = 0</li>
      */
-    public static Timestamp getNormalizedTimeInTZ(Timestamp time, Schedule schedule, TimeZone timeZone)
+    public static Date getNormalizedTimeInTZ(Date time, Schedule schedule, TimeZone timeZone)
     {
         Calendar calendar = Calendar.getInstance(timeZone);
         calendar.setTime(time);
@@ -100,17 +97,17 @@ public class DateTimeUtils
         return new Timestamp(calendar.getTime().getTime());
     }
 
-    public static Timestamp getPreviousTime(Timestamp time, Schedule schedule)
+    public static Date getPrevious(Date time, Schedule schedule)
     {
         return getTimeInTZ(time, schedule, TimeZone.getDefault(), -1);
     }
 
-    public static Timestamp getNextTime(Timestamp time, Schedule schedule)
+    public static Timestamp getNext(Date time, Schedule schedule)
     {
         return getTimeInTZ(time, schedule, TimeZone.getDefault(), +1);
     }
 
-    private static Timestamp getTimeInTZ(Timestamp time, Schedule schedule, TimeZone timeZone, int sign)
+    private static Timestamp getTimeInTZ(Date time, Schedule schedule, TimeZone timeZone, int sign)
     {
         Calendar cal = Calendar.getInstance(timeZone);
         cal.setTime(time);

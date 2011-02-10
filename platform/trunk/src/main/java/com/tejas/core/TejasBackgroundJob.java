@@ -101,12 +101,14 @@ public class TejasBackgroundJob
         {
             try
             {
-
-                /*
-                 * This call will make this thread sleep for napIntervalMillis if no-one calls "expediteExecution()" We take a nap before calling
-                 * "runIteration()", so we don't go into a tight loop if "runIteration()" misbehaves.
-                 */
-                getExpeditionTrigger().tryAcquire(this.configuration.napIntervalMillis, TimeUnit.MILLISECONDS);
+                if (this.task.shouldTakeANap())
+                {
+                    /*
+                     * This call will make this thread sleep for napIntervalMillis if no-one calls "expediteExecution()" We take a nap before calling
+                     * "runIteration()", so we don't go into a tight loop if "runIteration()" misbehaves.
+                     */
+                    getExpeditionTrigger().tryAcquire(this.configuration.napIntervalMillis, TimeUnit.MILLISECONDS);
+                }
 
                 this.task.runIteration(context, TejasBackgroundJob.this);
             }
@@ -276,6 +278,12 @@ public class TejasBackgroundJob
          * been called
          */
         void shutdown(TejasContext self) throws Exception;
+
+        /**
+         * For insomniacs! If the task discovers that there is lot of work to do and it feels like skipping a nap, it should return false here and the
+         * TejasBackgroundJob would skip the nap for this interval.
+         */
+        boolean shouldTakeANap();
     }
 
     public static abstract class AbstractTejasTask implements Task
@@ -291,16 +299,17 @@ public class TejasBackgroundJob
         {
             // NOOP
         }
+
+        @Override
+        public boolean shouldTakeANap()
+        {
+            return true;
+        }
     }
 
-    private static final int WORKER_SHUTDOWN_WAIT = ApplicationConfig.findInteger("Tejas.backgroundjobs.workerShutdownWait", 2000);
-
     private boolean shuttingDown = false;
-
     private boolean isActive = false;
-
     private final Worker worker;
-
     protected long lastUpdated;
 
     public TejasBackgroundJob(TejasContext self, Task task, Configuration configuration)
@@ -362,17 +371,14 @@ public class TejasBackgroundJob
     {
         setShuttingDown(true);
         this.worker.interrupt();
-        try
-        {
-            /*
-             * The reason to wait here, is to give the worker a chance to go down with dignity, before the JVM starts killing people
-             */
-            this.worker.join(WORKER_SHUTDOWN_WAIT);
-        }
-        catch (InterruptedException interruptedException)
-        {
-            // Ignore
-        }
+    }
+
+    /**
+     * Waits at most timeout milliseconds for this background-job to terminate. A timeout of 0 means indefinite wait.
+     */
+    public void join(int timeout) throws InterruptedException
+    {
+        this.worker.join(timeout);
     }
 
     public final synchronized void start()
