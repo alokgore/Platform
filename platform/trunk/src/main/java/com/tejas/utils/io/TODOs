@@ -1,2 +1,2 @@
-{hostname}.key=value
-keep only the relative file-name in the table 
+Switch to SQLLite
+Stopping in the middle of a file (Track timestamp as a first class subcomponent of a line)

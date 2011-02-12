@@ -42,7 +42,7 @@ public class TejasBackgroundJob
         private TejasContext self;
         private int _exceptionCount;
         private final Configuration configuration;
-        private final Task task;
+        private Task task;
         private ExceptionDetails lastSeenException;
         private Semaphore expeditionTrigger = new Semaphore(0);
 
@@ -50,16 +50,24 @@ public class TejasBackgroundJob
         {
             this.self = self;
             this.configuration = configuration;
+            if (task != null)
+            {
+                setTask(self, task);
+            }
+            this.setDaemon(true);
+        }
+
+        public void setTask(TejasContext self, Task task)
+        {
             this.task = task;
             try
             {
-                this.task.init(new TejasContext());
+                this.task.init(self);
             }
             catch (Exception e)
             {
                 throw new RuntimeException(e);
             }
-            this.setDaemon(true);
         }
 
         private void iterate(TejasContext context)
@@ -67,7 +75,7 @@ public class TejasBackgroundJob
             String exceptionMessage = "";
             try
             {
-                context.entry(this.configuration.jobName.replace(' ', '_'));
+                context.entry(this.task.getClass().getSimpleName());
                 iterateInner(context);
                 this._exceptionCount = -1;
             }
@@ -295,7 +303,7 @@ public class TejasBackgroundJob
         }
 
         @Override
-        public void shutdown(TejasContext self)
+        public void shutdown(TejasContext self) throws Exception
         {
             // NOOP
         }
@@ -310,6 +318,15 @@ public class TejasBackgroundJob
     private boolean shuttingDown = false;
     private boolean isActive = false;
     private final Worker worker;
+
+    /**
+     * For people who can not construct a task instance during the invocation to the {@link #TejasBackgroundJob(TejasContext, Task, Configuration)} method.
+     */
+    public void setTask(TejasContext self, Task task)
+    {
+        this.worker.setTask(self, task);
+    }
+
     protected long lastUpdated;
 
     public TejasBackgroundJob(TejasContext self, Task task, Configuration configuration)

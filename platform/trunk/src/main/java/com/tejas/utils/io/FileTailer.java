@@ -1,4 +1,4 @@
-package com.tejas.utils.misc;
+package com.tejas.utils.io;
 
 import static com.tejas.core.enums.PlatformComponents.PLATFORM_UTIL_LIB;
 
@@ -20,6 +20,7 @@ import com.tejas.core.TejasBackgroundJob;
 import com.tejas.core.TejasBackgroundJob.AbstractTejasTask;
 import com.tejas.core.TejasBackgroundJob.Configuration;
 import com.tejas.core.TejasContext;
+import com.tejas.utils.misc.Assert;
 
 public class FileTailer
 {
@@ -92,6 +93,12 @@ public class FileTailer
 
         @Update("update tejas_file_tailer_log set tail_status  = 'Complete', end_time = now() where file_name = #{fileName}")
         public void markTailComplete(String fileName);
+
+        @Update("delete from tejas_file_tailer_log where file_name like '#{baseFileName}%' ")
+        public void clearAllDataForFile(String baseFileName);
+
+        @Update("truncate tejas_file_tailer_log")
+        public void clearAllData();
     }
 
     public static interface DataListener
@@ -126,7 +133,7 @@ public class FileTailer
 
         public void markCompletion(TejasContext self)
         {
-            self.logger.info("Marking the tail process on [" + this.fileName + "] Complete");
+            self.logger.debug("Marking the tail process Complete");
             DatabaseMapper mapper = self.dbl.getMybatisMapper(DatabaseMapper.class);
             mapper.markTailComplete(this.fileName);
             FileTailer.this.endTime = new Date();
@@ -173,7 +180,7 @@ public class FileTailer
 
             long filePosition = mapper.readPosition(this.fileName);
 
-            self.logger.info("Setting the starting file-position in [" + this.fileName + "] to [", filePosition, "]");
+            self.logger.info("Starting a tail on [" + this.fileName + "] from position [", filePosition, "]");
             this.channel.position(filePosition);
         }
 
@@ -184,7 +191,7 @@ public class FileTailer
             {
                 if (!this.closed)
                 {
-                    self.logger.info("Stopping the tail process on [" + this.fileName + "]");
+                    self.logger.info("Stopping the tail process");
                     this.channel.close();
                 }
             }
@@ -216,15 +223,16 @@ public class FileTailer
 
             long oldPosition = this.channel.position();
             ByteBuffer byteBuffer = ByteBuffer.allocate(CHANNEL_READ_SIZE);
-            int numCharsRead = this.channel.read(byteBuffer);
-            self.logger.trace("Read [", numCharsRead, "] bytes from file [", this.fileName, "]  position [", oldPosition, "]");
+            int numBytesRead = this.channel.read(byteBuffer);
 
-            if (numCharsRead < 1)
+            self.metrics.recordCount("bytesRead", numBytesRead);
+
+            if (numBytesRead < 1)
             {
                 // End of File
                 if (isAutoStop())
                 {
-                    self.logger.info("(Auto)stopping the tail process on ", this.fileName);
+                    self.logger.info("Auto-stopping the tail process");
                     markCompletion(self);
                     parent.signalShutdown();
                 }
@@ -285,6 +293,9 @@ public class FileTailer
     private static final int CHANNEL_READ_SIZE = 1024 * 1024;
     private TejasBackgroundJob worker;
 
+    /**
+     * @return true if the FileTailer is still tailing the file
+     */
     public final boolean isActive()
     {
         return this.worker.isActive();
@@ -318,17 +329,18 @@ public class FileTailer
         this.worker = new TejasBackgroundJob(self, this.fileTailerTask, configuration);
     }
 
-    public void start(TejasContext self)
+    public void start()
     {
-        self.logger.info("Starting a tail process on file [" + this.fileTailerTask.getFileName() + "]");
         this.startTime = new Date();
         this.worker.start();
     }
 
     /**
-     * @param timeout
-     * @throws InterruptedException
-     * @see com.tejas.core.TejasBackgroundJob#join(int)
+     * Waits at most timeout milliseconds for this background-job to terminate. A timeout of 0 means indefinite wait. <br>
+     * <p>
+     * <i> <font color="red">Do keep in mind that if the FileTailer "tail --follow" mode, it will never terminate (unless someone calls
+     * {@link #stop(TejasContext)}). So calling join with 0 timeout will result in indefinite wait </i> </font>
+     * </p>
      */
     public void join(int timeout) throws InterruptedException
     {
@@ -355,7 +367,7 @@ public class FileTailer
      */
     public void stop(TejasContext self, TailStatus status)
     {
-        self.logger.info("Signaling the tail process on file [" + this.fileTailerTask.getFileName() + "] to go down");
+        self.logger.info("Signaling the tail process to go down with TailStatus [" + status + "] ");
         this.worker.signalShutdown();
         if (status == TailStatus.Complete)
         {
@@ -363,8 +375,9 @@ public class FileTailer
         }
     }
 
-    public void stopTailingAfterEOF()
+    public void stopTailingAfterEOF(TejasContext self)
     {
+        self.logger.trace("Asking the tailer to go down after EOF");
         this.fileTailerTask.setAutoStop(true);
     }
 

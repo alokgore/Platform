@@ -1,47 +1,79 @@
 package com.tejas.utils.io;
 
+import static com.tejas.core.enums.PlatformComponents.PLATFORM_UTIL_LIB;
+
 import java.io.File;
-import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+import com.tejas.core.TejasBackgroundJob;
 import com.tejas.core.TejasContext;
+import com.tejas.utils.io.FileTailer.DataListener;
+import com.tejas.utils.io.FileTailer.TailStatus;
 import com.tejas.utils.misc.DateTimeUtils;
 import com.tejas.utils.misc.DateTimeUtils.Schedule;
-import com.tejas.utils.misc.FileTailer;
-import com.tejas.utils.misc.FileTailer.DataListener;
 
-public class RollingFileTailer
+public class RollingFileTailer extends TejasBackgroundJob
 {
-    class Slot
+    public class FileRolloverTask extends AbstractTejasTask
+    {
+        @Override
+        public void runIteration(TejasContext self, TejasBackgroundJob backgroundJob) throws Exception
+        {
+            RollingFileTailer.this.rollOver(self);
+        }
+
+        @Override
+        public void shutdown(TejasContext self) throws Exception
+        {
+            RollingFileTailer.this.stopTailing(self);
+        }
+    }
+
+    @SuppressWarnings("synthetic-access")
+    public class Slot
     {
         public final Date startTime;
         public final Date endTime;
         private FileTailer fileTailer;
 
-        public synchronized FileTailer getFileTailer(TejasContext self)
+        /**
+         * @return
+         * @see com.tejas.utils.io.FileTailer#isActive()
+         */
+        public final boolean isActive()
         {
-            if ((this.fileTailer == null) && getFile().exists())
-            {
-                this.fileTailer = new FileTailer(self, getFile(), RollingFileTailer.this.dataListener, isOld());
-            }
-            return this.fileTailer;
+            return (this.fileTailer != null) && this.fileTailer.isActive();
         }
 
-        public Slot(Date startTime, Date endTime)
+        public synchronized void startFileTailer(TejasContext self)
+        {
+            if ((this.fileTailer == null) && hasFile())
+            {
+                this.fileTailer = new FileTailer(self, getFile(), RollingFileTailer.this.dataListener, isOld());
+                this.fileTailer.start();
+            }
+        }
+
+        public boolean hasFile()
+        {
+            return getFile().exists();
+        }
+
+        public Slot(Date startTime)
         {
             this.startTime = startTime;
-            this.endTime = endTime;
+            this.endTime = DateTimeUtils.getNext(this.startTime, RollingFileTailer.this.rolloverSchedule);
         }
 
         public Slot getNextSlot()
         {
-            return new Slot(this.endTime, DateTimeUtils.getNext(this.endTime, RollingFileTailer.this.rolloverSchedule));
+            return new Slot(this.endTime);
         }
 
         public Slot getPreviousSlot()
         {
-            return new Slot(DateTimeUtils.getPrevious(this.startTime, RollingFileTailer.this.rolloverSchedule), this.startTime);
+            return new Slot(DateTimeUtils.getPrevious(this.startTime, RollingFileTailer.this.rolloverSchedule));
         }
 
         public String getFileName()
@@ -79,39 +111,79 @@ public class RollingFileTailer
         {
             return new Date().getTime() > this.endTime.getTime();
         }
+
+        public void stopTailer(TejasContext self, TailStatus status)
+        {
+            if (this.fileTailer != null)
+            {
+                this.fileTailer.stop(self, status);
+            }
+        }
+
+        public void stopTailingAfterEOF(TejasContext self)
+        {
+            if (this.fileTailer != null)
+            {
+                this.fileTailer.stopTailingAfterEOF(self);
+            }
+        }
     }
 
-    File directory;
-    String baseFileName;
-    Schedule rolloverSchedule;
-    String dateTimeSuffix;
-    DataListener dataListener;
-    Date sessionStartTime;
-    Date sessionEndTime;
+    private File directory;
+    private String baseFileName;
+    private Schedule rolloverSchedule;
+    private String dateTimeSuffix;
+    private DataListener dataListener;
+    private Date sessionStartTime;
+    private Date sessionEndTime;
+    private Slot currentSlot;
 
-    public RollingFileTailer()
+    public synchronized Slot getCurrentSlot()
     {
-        // dummy
+        return this.currentSlot;
     }
 
-    RollingFileTailer(File directory, String baseFileName, Schedule rolloverSchedule,
-            String dateTimeSuffix, DataListener dataListener, Date sessionStartTime,
-            Date sessionEndTime)
+    public synchronized Date getSessionStartTime()
     {
-        this.directory = directory;
-        this.baseFileName = baseFileName;
-        this.rolloverSchedule = rolloverSchedule;
-        this.dateTimeSuffix = dateTimeSuffix;
-        this.dataListener = dataListener;
-        this.sessionStartTime = sessionStartTime;
-        this.sessionEndTime = sessionEndTime;
+        return this.sessionStartTime;
     }
 
-    Slot getCurrentSlot()
+    public void rollOver(TejasContext self)
     {
-        Date slotStart = DateTimeUtils.getNormalizedTime(new Date(), RollingFileTailer.this.rolloverSchedule);
-        Timestamp slotEnd = DateTimeUtils.getNext(slotStart, RollingFileTailer.this.rolloverSchedule);
-        return new Slot(slotStart, slotEnd);
+        /*
+         * Doing it in each iteration to cover the edge cases around delays in the file-creation etc
+         */
+        this.currentSlot.startFileTailer(self);
+
+        if (this.currentSlot.isOld())
+        {
+            this.currentSlot.stopTailingAfterEOF(self);
+
+            if (this.currentSlot.isActive() == false)
+            {
+                Slot nextSlot = this.currentSlot.getNextSlot();
+                if ((nextSlot.startTime.getTime() < this.sessionEndTime.getTime()))
+                {
+                    self.logger.info("Switching to the slot ", nextSlot.getFileName());
+                    this.currentSlot = nextSlot;
+                    this.currentSlot.startFileTailer(self);
+                }
+                else
+                {
+                    /*
+                     * We have reached the end of the session. Die!
+                     */
+                    this.signalShutdown();
+                }
+            }
+
+        }
+    }
+
+    void stopTailing(TejasContext self)
+    {
+        self.logger.info("Stopping the rolling-tailer for [" + this.baseFileName + "]");
+        this.currentSlot.stopTailer(self, TailStatus.InProgress);
     }
 
     @SuppressWarnings("hiding")
@@ -120,7 +192,7 @@ public class RollingFileTailer
         private File directory;
         private String baseFileName;
         private Schedule rolloverSchedule = Schedule.Hourly;
-        private String dateTimeSuffix = ".YYYY-MM-DD-HH";
+        private String dateTimeSuffix = ".yyyy-MM-dd-HH";
         private DataListener dataListener;
         private Date sessionStartTime;
         private Date sessionEndTime;
@@ -156,21 +228,34 @@ public class RollingFileTailer
             return this;
         }
 
-        public RollingFileTailer build()
+        public RollingFileTailer build(TejasContext self)
         {
-            return new RollingFileTailer(this);
+            return new RollingFileTailer(this, self);
         }
     }
 
     @SuppressWarnings("synthetic-access")
-    RollingFileTailer(Builder builder)
+    RollingFileTailer(Builder builder, TejasContext self)
     {
+        super(self, null, new Configuration.Builder("FileRolloverTask - " + builder.baseFileName, PLATFORM_UTIL_LIB, 1000).build());
+
         this.directory = builder.directory;
         this.baseFileName = builder.baseFileName;
         this.rolloverSchedule = builder.rolloverSchedule;
         this.dateTimeSuffix = builder.dateTimeSuffix;
         this.dataListener = builder.dataListener;
-        this.sessionStartTime = builder.sessionStartTime;
-        this.sessionEndTime = builder.sessionEndTime;
+
+        // Pick-up last 3 files by default
+        this.sessionStartTime =
+                (builder.sessionStartTime == null ? new Date(System.currentTimeMillis() - this.rolloverSchedule.getIntervalInMillis() * 3) : builder.sessionStartTime);
+
+        // Set end-time to 10 years from now, if not specified
+        this.sessionEndTime = builder.sessionEndTime != null ? builder.sessionEndTime : new Date(System.currentTimeMillis() + 10 * 365L * 24 * 3600L * 1000L);
+
+        this.setTask(self, new FileRolloverTask());
+
+        this.currentSlot = new Slot(DateTimeUtils.getNormalizedTime(this.sessionStartTime, this.rolloverSchedule));
+
+        self.logger.info("RollingFileTailer for [" + this.baseFileName + "] from [" + this.sessionStartTime + "] to [" + this.sessionEndTime + "]");
     }
 }
