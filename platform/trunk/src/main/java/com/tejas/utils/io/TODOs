@@ -1,2 +1,5 @@
 Switch to SQLLite
 Stopping in the middle of a file (Track timestamp as a first class subcomponent of a line)
+Test case for half-written lines. The FileTailer should not return half the line and wait for the writer process to finish
+Handle the case of restarts in the writer process
+Missing newline in the last line

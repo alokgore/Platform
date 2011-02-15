@@ -1,2 +1,2 @@
-{hostname}.key=value
 reading the default mysql settings from config
+Generic test case for testing a DB Mapper

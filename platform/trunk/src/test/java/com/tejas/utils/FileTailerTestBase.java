@@ -44,7 +44,6 @@ public class FileTailerTestBase
     {
         ApplicationConfig.initialize(null, null, "platform", "platform-test");
         TejasDBLRegistry.registerEndpoint(new MySQLEndpoint.Builder(LOCAL_MYSQL).withDatabaseName("platform").build(), true);
-
     }
 
     @Before
