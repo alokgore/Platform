@@ -3,3 +3,4 @@ Stopping in the middle of a file (Track timestamp as a first class subcomponent 
 Test case for half-written lines. The FileTailer should not return half the line and wait for the writer process to finish
 Handle the case of restarts in the writer process
 Missing newline in the last line
+Tailing on the file after it has been tailed once should give you zero data. That's not happening
