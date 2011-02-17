@@ -19,14 +19,14 @@ import com.mchange.v2.c3p0.ComboPooledDataSource;
 import com.tejas.config.ApplicationConfig;
 import com.tejas.dbl.types.BigIntegerTypeHandler;
 
-
 public class DatabaseEndpoint
 {
     public enum DatabaseVendor
     {
             HSQLDB,
             MySQL,
-            SQLite;
+            SQLite,
+            POSTGRES;
     }
 
     public static class EndPointDefinition
@@ -65,7 +65,7 @@ public class DatabaseEndpoint
         @Override
         public String toString()
         {
-            return name;
+            return this.name;
         }
     }
 
@@ -148,7 +148,7 @@ public class DatabaseEndpoint
 
     public synchronized <T> void addMapper(Class<T> mapper)
     {
-        Configuration configuration = sqlSessionFactory.getConfiguration();
+        Configuration configuration = this.sqlSessionFactory.getConfiguration();
         if (configuration.hasMapper(mapper) == false)
         {
             configuration.addMapper(mapper);
@@ -159,7 +159,7 @@ public class DatabaseEndpoint
     {
         try
         {
-            dataSource.close();
+            this.dataSource.close();
         }
         catch (Exception e)
         {
@@ -169,7 +169,7 @@ public class DatabaseEndpoint
 
     public DataSource getDataSource()
     {
-        return dataSource;
+        return this.dataSource;
     }
 
     @Override
