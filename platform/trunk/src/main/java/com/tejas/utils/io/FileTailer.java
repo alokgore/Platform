@@ -103,7 +103,7 @@ public class FileTailer
 
     public static interface DataListener
     {
-        void processNewData(List<String> lines, long currentFilePosition) throws Exception;
+        void processNewData(TejasContext self, List<String> lines, long currentFilePosition) throws Exception;
     }
 
     public class FileTailerTask extends AbstractTejasTask
@@ -283,7 +283,7 @@ public class FileTailer
 
         private void processData(TejasContext self, List<String> lines, long position) throws Exception
         {
-            this.listener.processNewData(lines, position);
+            this.listener.processNewData(self, lines, position);
 
             DatabaseMapper mapper = self.dbl.getMybatisMapper(DatabaseMapper.class);
             mapper.update(new FilePositionData(this.fileName, position));

@@ -20,7 +20,7 @@ public class FileTailerTestBase
     public static class CallbackHook implements DataListener
     {
         @Override
-        public void processNewData(List<String> lines, long currentFilePosition)
+        public void processNewData(TejasContext self, List<String> lines, long currentFilePosition)
         {
             System.err.println("currentFilePosition= " + currentFilePosition);
             for (String line : lines)
@@ -33,7 +33,7 @@ public class FileTailerTestBase
     public static class SilentCallbackHook implements DataListener
     {
         @Override
-        public void processNewData(List<String> lines, long currentFilePosition)
+        public void processNewData(TejasContext self, List<String> lines, long currentFilePosition)
         {
             // Silence!
         }
