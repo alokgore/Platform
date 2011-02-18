@@ -158,6 +158,8 @@ public class TejasBackgroundJob
             this.setName(this.configuration.jobName);
             this.self.logger.info("Starting background job [", this.configuration.jobName, "] wtih a napTime of [" + this.configuration.napIntervalMillis + "] millis");
 
+            delayJobStart();
+
             while (!isShuttingDown())
             {
                 iterate(this.self.clone());
@@ -177,6 +179,26 @@ public class TejasBackgroundJob
             this.self.logger.info("Job [", this.configuration.jobName, "] down.");
         }
 
+        protected void delayJobStart()
+        {
+            if (this.configuration.initialDelayIntervalMillis != -1)
+            {
+                try
+                {
+                    Thread.sleep(this.configuration.initialDelayIntervalMillis);
+                }
+                catch (Exception e)
+                {
+                    // Ignore
+                }
+
+                /*
+                 * Release a permit so we do not sleep again before the first job iteration
+                 */
+                getExpeditionTrigger().release();
+            }
+        }
+
         public final void setExpeditionTrigger(Semaphore expeditionTrigger)
         {
             this.expeditionTrigger = expeditionTrigger;
@@ -190,6 +212,7 @@ public class TejasBackgroundJob
         {
             String jobName;
             long napIntervalMillis;
+            long _initialDelayIntervalMillis = -1;
             int _exceptionThreshold = ApplicationConfig.findInteger("Tejas.backgroundjobs.exceptionThreshold", 3);
             Severity _alarmSeverity = Severity.valueOf(ApplicationConfig.findString("Tejas.backgroundjobs.alarmSeverity", Severity.FATAL.name()));
             Enum _alarmName = TejasAlarms.FOX_BACKGROUND_JOB_FAILED;
@@ -232,10 +255,17 @@ public class TejasBackgroundJob
                 return this;
             }
 
+            public Builder initialDelayIntervalMillis(int initialDelayIntervalMillis)
+            {
+                this._initialDelayIntervalMillis = initialDelayIntervalMillis;
+                return this;
+            }
+
         }
 
         public final String jobName;
         public final long napIntervalMillis;
+        public final long initialDelayIntervalMillis;
         public final int exceptionThreshold;
         public final Severity alarmSeverity;
         public final Enum alarmName;
@@ -251,6 +281,7 @@ public class TejasBackgroundJob
             this.alarmName = builder._alarmName;
             this.componentName = builder.componentName;
             this.deduplicationString = builder._deduplicationString;
+            this.initialDelayIntervalMillis = builder._initialDelayIntervalMillis;
         }
     }
 
