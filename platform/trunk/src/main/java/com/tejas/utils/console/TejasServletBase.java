@@ -13,7 +13,7 @@ import com.tejas.utils.misc.StringUtils;
 public abstract class TejasServletBase extends HttpServlet
 {
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
+    public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
     {
         PrintWriter out = new PrintWriter(response.getOutputStream());
         try
@@ -31,11 +31,11 @@ public abstract class TejasServletBase extends HttpServlet
         }
     }
 
-    protected abstract void execute(HttpServletRequest request, PrintWriter out) throws Throwable;
-   
+    public abstract void execute(HttpServletRequest request, PrintWriter out) throws Throwable;
+
     @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
+    public void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
     {
         doGet(request, response);
-    }    
+    }
 }

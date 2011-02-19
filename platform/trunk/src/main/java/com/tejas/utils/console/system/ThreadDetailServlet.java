@@ -8,9 +8,9 @@ import javax.servlet.http.HttpServletResponse;
 
 public class ThreadDetailServlet extends ThreadStatusServletBase
 {
-	@Override
-	protected final void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
-	{
-		printThreadDetails(request, response, "Threads Details", true);
-	}
+    @Override
+    public final void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
+    {
+        printThreadDetails(request, response, "Threads Details", true);
+    }
 }

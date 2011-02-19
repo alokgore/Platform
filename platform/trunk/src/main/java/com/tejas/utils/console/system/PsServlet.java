@@ -8,7 +8,7 @@ import javax.servlet.http.HttpServletResponse;
 
 public class PsServlet extends CommandInvokerServlet
 {
-	protected void printPsTrace(HttpServletResponse response) throws IOException
+	public void printPsTrace(HttpServletResponse response) throws IOException
 	{
 		String[] setenv = { "/bin/zsh", "setenv COLUMNS 400" };
 		String cmd = "ps -eo pid,user,pcpu,pmem,args --sort=-pcpu,-pmem";
@@ -16,7 +16,7 @@ public class PsServlet extends CommandInvokerServlet
 	}
 
 	@Override
-	protected final void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
+	public final void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
 	{
 		printPsTrace(response);
 	}

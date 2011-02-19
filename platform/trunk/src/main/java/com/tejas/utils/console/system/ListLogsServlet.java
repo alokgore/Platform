@@ -18,7 +18,7 @@ public class ListLogsServlet extends HttpServlet
 {
 	@Override
 	@SuppressWarnings("unchecked")
-	protected final void doGet(HttpServletRequest request, HttpServletResponse response)  throws ServletException, IOException
+	public final void doGet(HttpServletRequest request, HttpServletResponse response)  throws ServletException, IOException
 	{
 		List<String> logList = (List<String>)ApplicationConfig.findObject("log.console.file.list");
 		ListIterator<String> iterator = logList.listIterator();

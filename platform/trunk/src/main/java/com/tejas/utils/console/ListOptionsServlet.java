@@ -98,7 +98,7 @@ public abstract class ListOptionsServlet extends HttpServlet
 	}
 
 	@Override
-	protected final void doGet(HttpServletRequest request, HttpServletResponse response) 
+	public final void doGet(HttpServletRequest request, HttpServletResponse response) 
 	throws ServletException, IOException
 	{
 		PrintWriter out = response.getWriter();

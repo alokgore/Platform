@@ -8,7 +8,7 @@ import javax.servlet.http.HttpServletResponse;
 
 public class IoStatServlet extends CommandInvokerServlet
 {
-	protected void printIostatTrace(HttpServletResponse response) throws IOException
+	public void printIostatTrace(HttpServletResponse response) throws IOException
 	{
 		String[] setenv = { "/bin/zsh", "setenv COLUMNS 400" };
 		String cmd = "/usr/bin/iostat";
@@ -16,7 +16,7 @@ public class IoStatServlet extends CommandInvokerServlet
 	}
 
 	@Override
-	protected final void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
+	public final void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
 	{
 		printIostatTrace(response);
 	}

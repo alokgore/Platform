@@ -9,7 +9,7 @@ import javax.servlet.http.HttpServletResponse;
 public class TopServlet extends CommandInvokerServlet
 {
 	@Override
-	protected final void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
+	public final void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
 	{
 		String[] setenv = { "/bin/zsh", "setenv COLUMNS 400" };
 		String cmd = "/usr/bin/top bcn 1";
