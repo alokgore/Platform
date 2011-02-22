@@ -9,7 +9,7 @@ import org.junit.BeforeClass;
 
 import com.tejas.config.ApplicationConfig;
 import com.tejas.core.TejasContext;
-import com.tejas.dbl.MySQLEndpoint;
+import com.tejas.dbl.SqliteEndpoint;
 import com.tejas.dbl.TejasDBLRegistry;
 import com.tejas.utils.io.FileTailer;
 import com.tejas.utils.io.FileTailer.DataListener;
@@ -43,14 +43,23 @@ public class FileTailerTestBase
     public static void setup() throws Exception
     {
         ApplicationConfig.initialize(null, null, "platform", "platform-test");
-        TejasDBLRegistry.registerEndpoint(new MySQLEndpoint.Builder(LOCAL_MYSQL).withDatabaseName("platform").build(), true);
+        // TejasDBLRegistry.registerEndpoint(new MySQLEndpoint.Builder(LOCAL_MYSQL).withDatabaseName("platform").build(), true);
+        // TejasDBLRegistry.registerEndpoint(new SqliteEndpoint.Builder(LOCAL_MYSQL).withDatabaseName("platform").build(), true);
+        TejasDBLRegistry.registerEndpoint(new SqliteEndpoint.Builder(LOCAL_MYSQL).build(), true);
     }
 
     @Before
     public void cleanDatabase()
     {
         DatabaseMapper mapper = new TejasContext().dbl.getMybatisMapper(FileTailer.DatabaseMapper.class);
-        mapper.clearAllData();
+        try
+        {
+            mapper.clearAllData();
+        }
+        catch (Exception e)
+        {
+            // Ignore
+        }
     }
 
 }

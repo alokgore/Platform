@@ -43,15 +43,15 @@ public class RollingFileTailer extends TejasBackgroundJob
          */
         public final boolean isActive()
         {
-            return (this.fileTailer != null) && this.fileTailer.isActive();
+            return (fileTailer != null) && fileTailer.isActive();
         }
 
         public synchronized void startFileTailer(TejasContext self)
         {
-            if ((this.fileTailer == null) && hasFile())
+            if ((fileTailer == null) && hasFile())
             {
-                this.fileTailer = new FileTailer(self, getFile(), RollingFileTailer.this.dataListener, isOld());
-                this.fileTailer.start();
+                fileTailer = new FileTailer(self, getFile(), dataListener, isOld());
+                fileTailer.start();
             }
         }
 
@@ -63,33 +63,33 @@ public class RollingFileTailer extends TejasBackgroundJob
         public Slot(Date startTime)
         {
             this.startTime = startTime;
-            this.endTime = DateTimeUtils.getNext(this.startTime, RollingFileTailer.this.rolloverSchedule);
+            endTime = DateTimeUtils.getNext(this.startTime, rolloverSchedule);
         }
 
         public Slot getNextSlot()
         {
-            return new Slot(this.endTime);
+            return new Slot(endTime);
         }
 
         public Slot getPreviousSlot()
         {
-            return new Slot(DateTimeUtils.getPrevious(this.startTime, RollingFileTailer.this.rolloverSchedule));
+            return new Slot(DateTimeUtils.getPrevious(startTime, rolloverSchedule));
         }
 
         public String getFileName()
         {
-            return RollingFileTailer.this.baseFileName + new SimpleDateFormat(RollingFileTailer.this.dateTimeSuffix).format(this.startTime);
+            return baseFileName + new SimpleDateFormat(dateTimeSuffix).format(startTime);
         }
 
         public File getFile()
         {
-            return new File(RollingFileTailer.this.directory.getAbsolutePath() + File.separator + getFileName());
+            return new File(directory.getAbsolutePath() + File.separator + getFileName());
         }
 
         @Override
         public int hashCode()
         {
-            return this.startTime.hashCode();
+            return startTime.hashCode();
         }
 
         @Override
@@ -99,7 +99,7 @@ public class RollingFileTailer extends TejasBackgroundJob
             {
                 Slot slot = (Slot) obj;
 
-                return this.startTime.equals(slot.startTime);
+                return startTime.equals(slot.startTime);
             }
             return false;
         }
@@ -109,22 +109,22 @@ public class RollingFileTailer extends TejasBackgroundJob
          */
         public boolean isOld()
         {
-            return new Date().getTime() > this.endTime.getTime();
+            return new Date().getTime() > endTime.getTime();
         }
 
         public void stopTailer(TejasContext self, TailStatus status)
         {
-            if (this.fileTailer != null)
+            if (fileTailer != null)
             {
-                this.fileTailer.stop(self, status);
+                fileTailer.stop(self, status);
             }
         }
 
         public void stopTailingAfterEOF(TejasContext self)
         {
-            if (this.fileTailer != null)
+            if (fileTailer != null)
             {
-                this.fileTailer.stopTailingAfterEOF(self);
+                fileTailer.stopTailingAfterEOF(self);
             }
         }
     }
@@ -140,33 +140,33 @@ public class RollingFileTailer extends TejasBackgroundJob
 
     public synchronized Slot getCurrentSlot()
     {
-        return this.currentSlot;
+        return currentSlot;
     }
 
     public synchronized Date getSessionStartTime()
     {
-        return this.sessionStartTime;
+        return sessionStartTime;
     }
 
-    public void rollOver(TejasContext self)
+    void rollOver(TejasContext self)
     {
         /*
          * Doing it in each iteration to cover the edge cases around delays in the file-creation etc
          */
-        this.currentSlot.startFileTailer(self);
+        currentSlot.startFileTailer(self);
 
-        if (this.currentSlot.isOld())
+        if (currentSlot.isOld())
         {
-            this.currentSlot.stopTailingAfterEOF(self);
+            currentSlot.stopTailingAfterEOF(self);
 
-            if (this.currentSlot.isActive() == false)
+            if (currentSlot.isActive() == false)
             {
-                Slot nextSlot = this.currentSlot.getNextSlot();
-                if ((nextSlot.startTime.getTime() < this.sessionEndTime.getTime()))
+                Slot nextSlot = currentSlot.getNextSlot();
+                if ((nextSlot.startTime.getTime() < sessionEndTime.getTime()))
                 {
                     self.logger.info("Switching to the slot ", nextSlot.getFileName());
-                    this.currentSlot = nextSlot;
-                    this.currentSlot.startFileTailer(self);
+                    currentSlot = nextSlot;
+                    currentSlot.startFileTailer(self);
                 }
                 else
                 {
@@ -182,8 +182,8 @@ public class RollingFileTailer extends TejasBackgroundJob
 
     void stopTailing(TejasContext self)
     {
-        self.logger.info("Stopping the rolling-tailer for [" + this.baseFileName + "]");
-        this.currentSlot.stopTailer(self, TailStatus.InProgress);
+        self.logger.info("Stopping the rolling-tailer for [" + baseFileName + "]");
+        currentSlot.stopTailer(self, TailStatus.InProgress);
     }
 
     @SuppressWarnings("hiding")
@@ -239,23 +239,23 @@ public class RollingFileTailer extends TejasBackgroundJob
     {
         super(self, null, new Configuration.Builder("FileRolloverTask - " + builder.baseFileName, PLATFORM_UTIL_LIB, 1000).build());
 
-        this.directory = builder.directory;
-        this.baseFileName = builder.baseFileName;
-        this.rolloverSchedule = builder.rolloverSchedule;
-        this.dateTimeSuffix = builder.dateTimeSuffix;
-        this.dataListener = builder.dataListener;
+        directory = builder.directory;
+        baseFileName = builder.baseFileName;
+        rolloverSchedule = builder.rolloverSchedule;
+        dateTimeSuffix = builder.dateTimeSuffix;
+        dataListener = builder.dataListener;
 
         // Pick-up last 3 files by default
-        this.sessionStartTime =
-                (builder.sessionStartTime == null ? new Date(System.currentTimeMillis() - this.rolloverSchedule.getIntervalInMillis() * 3) : builder.sessionStartTime);
+        sessionStartTime =
+                (builder.sessionStartTime == null ? new Date(System.currentTimeMillis() - rolloverSchedule.getIntervalInMillis() * 3) : builder.sessionStartTime);
 
         // Set end-time to 10 years from now, if not specified
-        this.sessionEndTime = builder.sessionEndTime != null ? builder.sessionEndTime : new Date(System.currentTimeMillis() + 10 * 365L * 24 * 3600L * 1000L);
+        sessionEndTime = builder.sessionEndTime != null ? builder.sessionEndTime : new Date(System.currentTimeMillis() + 10 * 365L * 24 * 3600L * 1000L);
 
         this.setTask(self, new FileRolloverTask());
 
-        this.currentSlot = new Slot(DateTimeUtils.getNormalizedTime(this.sessionStartTime, this.rolloverSchedule));
+        currentSlot = new Slot(DateTimeUtils.getNormalizedTime(sessionStartTime, rolloverSchedule));
 
-        self.logger.info("RollingFileTailer for [" + this.baseFileName + "] from [" + this.sessionStartTime + "] to [" + this.sessionEndTime + "]");
+        self.logger.info("RollingFileTailer for [" + baseFileName + "] from [" + sessionStartTime + "] to [" + sessionEndTime + "]");
     }
 }

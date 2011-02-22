@@ -20,48 +20,49 @@ public class PostgresEndpoint extends DatabaseEndpoint
         @SuppressWarnings("rawtypes")
         public Builder(Enum endpointName)
         {
-            this._endpointName = endpointName;
+            _endpointName = endpointName;
         }
 
         public PostgresEndpoint build() throws Exception
         {
-            String jdbcURL = "jdbc:postgresql://" + this._hostName + ":" + this._port + "/" + this._databaseName;
-            return new PostgresEndpoint(this._endpointName, this._type, this._userName, this._password, jdbcURL);
+            System.out.println("Trying to build");
+            String jdbcURL = "jdbc:postgresql://" + _hostName + ":" + _port + "/" + _databaseName;
+            return new PostgresEndpoint(_endpointName, _type, _userName, _password, jdbcURL);
         }
 
         public Builder withDatabaseName(String databaseName)
         {
-            this._databaseName = databaseName;
+            _databaseName = databaseName;
             return this;
         }
 
         public Builder withHostName(String hostName)
         {
-            this._hostName = hostName;
+            _hostName = hostName;
             return this;
         }
 
         public Builder withPassword(String password)
         {
-            this._password = password;
+            _password = password;
             return this;
         }
 
         public Builder withPort(int port)
         {
-            this._port = port;
+            _port = port;
             return this;
         }
 
         public Builder withType(EndpointType type)
         {
-            this._type = type;
+            _type = type;
             return this;
         }
 
         public Builder withUserName(String userName)
         {
-            this._userName = userName;
+            _userName = userName;
             return this;
         }
     }

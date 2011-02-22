@@ -1,6 +1,5 @@
 package com.tejas.utils;
 
-
 import java.io.File;
 
 import org.apache.commons.lang.RandomStringUtils;
@@ -37,6 +36,8 @@ public class FileTailerTest extends FileTailerTestBase
         mapper.markTailComplete(fileName);
 
         Assert.equals(TailStatus.Complete, mapper.readStatus(fileName));
+
+        System.out.println(mapper.selectAllData());
     }
 
     @Test

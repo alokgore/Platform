@@ -3,7 +3,6 @@ package com.tejas.dbl;
 import java.math.BigInteger;
 import java.sql.Driver;
 import java.sql.DriverManager;
-
 import javax.sql.DataSource;
 
 import org.apache.commons.lang.builder.ReflectionToStringBuilder;
@@ -65,7 +64,7 @@ public class DatabaseEndpoint
         @Override
         public String toString()
         {
-            return this.name;
+            return name;
         }
     }
 
@@ -82,9 +81,9 @@ public class DatabaseEndpoint
         this.name = name;
         this.type = type;
         this.vendor = vendor;
-        this.dataSource = initialize(endPointDefinition);
+        dataSource = initialize(endPointDefinition);
 
-        Configuration configuration = new Configuration(new Environment(name.name(), new JdbcTransactionFactory(), this.dataSource));
+        Configuration configuration = new Configuration(new Environment(name.name(), new JdbcTransactionFactory(), dataSource));
         // XXX: Document all of the settings below and make them configurable
         configuration.setAutoMappingBehavior(AutoMappingBehavior.FULL);
         configuration.setDefaultExecutorType(ExecutorType.SIMPLE);
@@ -92,7 +91,7 @@ public class DatabaseEndpoint
 
         configuration.getTypeHandlerRegistry().register(BigInteger.class, new BigIntegerTypeHandler());
 
-        this.sqlSessionFactory = new SqlSessionFactoryBuilder().build(configuration);
+        sqlSessionFactory = new SqlSessionFactoryBuilder().build(configuration);
     }
 
     private void addPropertyDefault(ComboPooledDataSource ds)
@@ -107,7 +106,7 @@ public class DatabaseEndpoint
 
     private int getPropertyValue(final String primaryKey, int defaultValue)
     {
-        final String secondaryKey = primaryKey + this.name + "." + this.type;
+        final String secondaryKey = primaryKey + name + "." + type;
         final Integer propertyValue = ApplicationConfig.findInteger(primaryKey);
         if (propertyValue != null)
         {
@@ -148,7 +147,7 @@ public class DatabaseEndpoint
 
     public synchronized <T> void addMapper(Class<T> mapper)
     {
-        Configuration configuration = this.sqlSessionFactory.getConfiguration();
+        Configuration configuration = sqlSessionFactory.getConfiguration();
         if (configuration.hasMapper(mapper) == false)
         {
             configuration.addMapper(mapper);
@@ -159,7 +158,7 @@ public class DatabaseEndpoint
     {
         try
         {
-            this.dataSource.close();
+            dataSource.close();
         }
         catch (Exception e)
         {
@@ -169,7 +168,7 @@ public class DatabaseEndpoint
 
     public DataSource getDataSource()
     {
-        return this.dataSource;
+        return dataSource;
     }
 
     @Override
