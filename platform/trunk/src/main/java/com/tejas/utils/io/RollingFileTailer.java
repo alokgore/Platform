@@ -6,6 +6,7 @@ import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+import com.tejas.config.ApplicationConfig;
 import com.tejas.core.TejasBackgroundJob;
 import com.tejas.core.TejasContext;
 import com.tejas.utils.io.FileTailer.DataListener;
@@ -246,8 +247,9 @@ public class RollingFileTailer extends TejasBackgroundJob
         dataListener = builder.dataListener;
 
         // Pick-up last 3 files by default
+        int numPreviousFiles = ApplicationConfig.findInteger("tejas.fileTailer.numOldFiles", 3);
         sessionStartTime =
-                (builder.sessionStartTime == null ? new Date(System.currentTimeMillis() - rolloverSchedule.getIntervalInMillis() * 3) : builder.sessionStartTime);
+                (builder.sessionStartTime == null ? new Date(System.currentTimeMillis() - rolloverSchedule.getIntervalInMillis() * numPreviousFiles) : builder.sessionStartTime);
 
         // Set end-time to 10 years from now, if not specified
         sessionEndTime = builder.sessionEndTime != null ? builder.sessionEndTime : new Date(System.currentTimeMillis() + 10 * 365L * 24 * 3600L * 1000L);
